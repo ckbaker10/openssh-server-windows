@@ -1,6 +1,6 @@
 --- a/bin/ssh-host-config
 +++ b/bin/ssh-host-config
-@@ -48,6 +48,26 @@
+@@ -48,6 +48,42 @@
  csih_sanity_check_server=yes
  source ${CSIH_SCRIPT}
  
@@ -15,13 +15,29 @@
 +
 +# Keep valid NTFS ownership and ACLs during upgrades.
 +openssh_chown_service_file() {
-+  local expected_uid current_uid
++  local expected_uid current_uid system_directory
 +  expected_uid=$(id -u "${run_service_as}") || return 1
 +  current_uid=$(stat -c %u "$1") || return 1
 +  if [ "${current_uid}" = "${expected_uid}" ]; then
 +    return 0
 +  fi
-+  chown "${run_service_as}".544 "$1"
++  if chown "${run_service_as}".544 "$1"; then
++    [ "$(stat -c %u "$1")" = "${expected_uid}" ] && return 0
++  fi
++  echo "Owner repair required for $1 (expected UID ${expected_uid})." >&2
++  # SID avoids localized or domain-dependent SYSTEM account resolution.
++  if [ "${run_service_as}" != SYSTEM ] || [ "${expected_uid}" != 18 ]; then
++    return 1
++  fi
++  system_directory="$(cygpath -u "${SYSTEMROOT:?Windows SYSTEMROOT is required}")/System32"
++  if ! "${system_directory}/icacls.exe" "$(cygpath -w "$1")" /setowner '*S-1-5-18'; then
++    echo "SYSTEM ownership fallback failed for $1." >&2
++    return 1
++  fi
++  current_uid=$(stat -c %u "$1") || return 1
++  [ "${current_uid}" = "${expected_uid}" ] && return 0
++  echo "SYSTEM ownership verification failed for $1 (UID ${current_uid})." >&2
++  return 1
 +}
 +
  PROGNAME=$(/usr/bin/basename $0)
@@ -58,7 +74,7 @@
      if [ -f "$i" ]
      then
 -      if ! chown "${run_service_as}".544 "$i" >/dev/null 2>&1
-+      if ! openssh_chown_service_file "$i" >/dev/null 2>&1
++      if ! openssh_chown_service_file "$i"
        then
  	csih_warning "Couldn't change owner of $i!"
  	let ++ret
@@ -66,13 +82,13 @@
      fi
    done
 -  if ! chown "${run_service_as}".544 ${LOCALSTATEDIR}/empty >/dev/null 2>&1
-+  if ! openssh_chown_service_file ${LOCALSTATEDIR}/empty >/dev/null 2>&1
++  if ! openssh_chown_service_file ${LOCALSTATEDIR}/empty
    then
      csih_warning "Couldn't change owner of ${LOCALSTATEDIR}/empty!"
      let ++ret
    fi
 -  if ! chown "${run_service_as}".544 ${LOCALSTATEDIR}/log/lastlog >/dev/null 2>&1
-+  if ! openssh_chown_service_file ${LOCALSTATEDIR}/log/lastlog >/dev/null 2>&1
++  if ! openssh_chown_service_file ${LOCALSTATEDIR}/log/lastlog
    then
      csih_warning "Couldn't change owner of ${LOCALSTATEDIR}/log/lastlog!"
      let ++ret
@@ -80,7 +96,7 @@
    if [ -f ${LOCALSTATEDIR}/log/sshd.log ]
    then
 -    if ! chown "${run_service_as}".544 ${LOCALSTATEDIR}/log/sshd.log >/dev/null 2>&1
-+    if ! openssh_chown_service_file ${LOCALSTATEDIR}/log/sshd.log >/dev/null 2>&1
++    if ! openssh_chown_service_file ${LOCALSTATEDIR}/log/sshd.log
      then
        csih_warning "Couldn't change owner of ${LOCALSTATEDIR}/log/sshd.log!"
        let ++ret

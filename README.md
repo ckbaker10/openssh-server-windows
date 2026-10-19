@@ -8,7 +8,8 @@ The project provides a package that can be built on Linux and installed or
 updated independently of the optional Windows OpenSSH feature. No Microsoft
 SDK is required. The service runs as LocalSystem; signed-in users receive
 their own Windows account permissions. Password authentication is disabled
-by default. Releases are currently prereleases.
+by default. Revision 7 is the accepted stable baseline; new candidates may
+remain prereleases while their changes await Windows validation.
 
 ## Install as an administrator
 
@@ -36,10 +37,13 @@ chmod 600 "$HOME/.ssh/authorized_keys"
 exit
 ```
 
+Before exposing a port, set an explicit `AllowUsers` list and check SYSTEM
+ownership using the [installation guide](docs/windows-installation.md).
 Back in PowerShell, check the configuration and start the service:
 
 ```powershell
 .\bin\bash.exe --noprofile --norc -c 'export PATH=/usr/bin:/bin:/usr/sbin:$PATH; /usr/sbin/sshd -t'
+if ($LASTEXITCODE -ne 0) { throw 'Configuration check failed' }
 Start-Service openssh-cygwin
 ```
 
@@ -64,6 +68,8 @@ Existing home directories are not overwritten. `-Start` starts the service
 after success even if it was previously stopped.
 Connect with `ssh -p 2222 sshuser@server.example`.
 See [setting up and removing users](docs/nonadmin-users.md).
+Domain-qualified names and alternative home layouts require manual setup;
+see the [domain account guidance](docs/windows-installation.md#domain-members-and-account-selection).
 
 ## Build from source
 

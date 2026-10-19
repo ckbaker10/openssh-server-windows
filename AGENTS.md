@@ -23,6 +23,15 @@ g:18 and retain a visible, nonfatal warning on failure. Skip ownership changes
 when the UID is already correct. Do not change NTFS permissions across the
 installation root.
 
+New service registrations use delayed automatic startup and the existing
+TCP/IP dependency. Preserve startup/dependency settings on existing registrations.
+Retain host-config warning exit codes and print owner checks even after warnings.
+When Cygwin chown fails, repair only the exact service file with icacls using
+SYSTEM SID S-1-5-18, verify the resulting owner and report failures visibly.
+Do not schedule privileged tasks automatically or infer successful ownership
+from service startup. Domain names/homes need explicit SID and NSS review;
+do not silently migrate /home/%U or extend the local helper to ambiguous names.
+
 Every Bash invocation without profiles needs an explicit Cygwin PATH, either
 inside the script or before the command. Check native exit codes using the
 globally updated LASTEXITCODE. Edit configuration with Robocopy /B /COPY:DAT

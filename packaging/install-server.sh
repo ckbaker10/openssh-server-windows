@@ -53,6 +53,37 @@ ensure_system_directory_acl() {
     return 0
 }
 
+configure_delayed_start() {
+    local system_directory
+    system_directory="$(cygpath -u "${SYSTEMROOT:?Windows SYSTEMROOT is required}")/System32"
+    "$system_directory/sc.exe" config "$service_name" start= delayed-auto
+}
+
+print_owner_check() {
+    echo 'Verify SYSTEM ownership of etc\sshd_config and every private etc\ssh_host_*_key before starting.'
+    echo 'PowerShell: Get-Item .\etc\sshd_config, .\etc\ssh_host_*_key | Get-Acl | Format-Table Path,Owner'
+    echo 'If ownership is wrong, use an elevated local console; icacls.exe <exact-file> /setowner *S-1-5-18'
+    echo 'If denied, repeat only that repair as SYSTEM using your administrative task procedure; see INSTALLATION.md.'
+}
+
+finish_service_setup() {
+    local existing_service=$1 helper_status=$2 startup_status=0
+    if [[ $existing_service == no ]] && cygrunsrv -Q "$service_name" >/dev/null 2>&1; then
+        configure_delayed_start || startup_status=$?
+        if ((startup_status)); then
+            echo 'ERROR: Could not set delayed automatic startup. Review sc.exe output before starting.' >&2
+        else
+            echo 'New service: Automatic (Delayed Start), with the TCP/IP dependency.'
+        fi
+    fi
+    print_owner_check
+    if ((helper_status)); then
+        echo "Host configuration returned $helper_status errors/warnings; review every diagnostic. A registered service alone does not prove successful setup." >&2
+        return "$helper_status"
+    fi
+    return "$startup_status"
+}
+
 main() {
     parse_arguments "$@" || return $?
     if [[ $show_help == yes ]]; then
@@ -79,7 +110,10 @@ main() {
         : > /var/log/sshd.log
     fi
     prepare_owned_path /var/log/sshd.log 640
-    local backup name
+    local backup name helper_status=0 existing_service=no
+    if cygrunsrv -Q "$service_name" >/dev/null 2>&1; then
+        existing_service=yes
+    fi
     backup=/etc/backups/$(date -u +%Y%m%dT%H%M%SZ)-$$
     mkdir -m 700 "$backup"
     for name in sshd_config ssh_config nsswitch.conf; do
@@ -92,7 +126,8 @@ main() {
     done
     echo "Configuration backup: $backup"
     echo 'Service account: LocalSystem. Existing services keep their registration; see upgrade instructions.'
-    /usr/bin/ssh-host-config "${helper_args[@]}"
+    /usr/bin/ssh-host-config "${helper_args[@]}" || helper_status=$?
+    finish_service_setup "$existing_service" "$helper_status"
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then

@@ -45,6 +45,8 @@ assert package.verify_pe(root) == manifest['pe_imports']
 config = (root / 'etc' / 'sshd_config').read_text()
 assert 'PasswordAuthentication no' in config
 assert 'Subsystem sftp internal-sftp' in config
+assert '# AllowUsers REPLACE_WITH_EXACT_CYGWIN_ACCOUNT' in config
+assert '# AuthenticationMethods publickey' in config
 assert not list(root.rglob('ssh_host_*_key'))
 assert (root / 'bin' / 'ssh-host-config').is_file()
 assert (root / 'lib' / 'terminfo' / '78' / 'xterm').is_file()
@@ -54,6 +56,8 @@ assert 'db_home: /home/%U' in (root / 'etc/nsswitch.conf').read_text()
 helper = (root / 'bin/ssh-host-config').read_text()
 assert '-D -E /var/log/sshd.log' in helper
 assert 'Keeping existing $1' in helper
+assert '/setowner' in helper and '*S-1-5-18' in helper
+assert '-y tcpip' in helper
 for name in ['install-server.sh', 'open-shell.sh', 'install-user.sh']:
     assert b'\r' not in (root / name).read_bytes()
 for name in ['install-user.cmd', 'install-user.ps1', 'user-setup.psm1']:

@@ -53,6 +53,54 @@ with unknown partial effects. MaxStartups controls concurrent unauthenticated
 connections and is not a demonstrated fix for this fork error. Do not add
 blanket antivirus exclusions or make global security changes.
 
+Connection success rates can vary between runs with identical binaries.
+For automation, allow one delayed reconnect for connection-establishment
+failures, with a bounded timeout. An interrupted command may already have run;
+verify its result before retrying it. `seteuid ... Permission denied` also
+requires account/token diagnostics; it does not establish a DLL-rebase cause.
+
+## Service stopped after reboot
+
+Early connections during Windows startup can coincide with fork/seteuid
+failures and an unexpected service exit. New installations use delayed
+automatic startup and retain the TCP/IP dependency. Neither setting proves
+that login/profile initialization is complete. Availability begins after the
+startup phase; use a monitoring grace period and bounded backoff instead of
+opening a connection every second from boot.
+
+`Get-Service openssh-cygwin` can report Stopped even when its startup mode is
+Automatic. Check the timestamped Service Control Manager events (including
+7034), `sc.exe qc openssh-cygwin`, `sc.exe queryex openssh-cygwin` for exit
+codes, and the full
+sshd log before an administrative `Start-Service openssh-cygwin`.
+See [Microsoft sc.exe config](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/sc-config)
+for delayed startup syntax. It is a mitigation requiring reboot validation.
+
+In the shipped daemon source, a failed connection fork is logged, and a startup
+pipe read error closes that child's state while the accept loop continues.
+The final `startup pipe ... read Software caused connection abort` line does
+not by itself identify why the service exited. Preserve adjacent Windows
+events, exit status and, through an approved diagnostic procedure, a crash
+dump if available. No daemon crash fix is claimed from these messages alone.
+
+## Installer reports ownership warnings
+
+The host-config exit code counts errors/warnings; service registration and
+`sshd -t` can succeed despite an incorrect owner. The installer tries scoped
+chown and icacls repairs and prints the affected file and failure. Verify SYSTEM
+ownership of sshd_config and private host keys using the procedure in
+INSTALLATION.md. An elevated SSH token may still lack effective owner-restore
+rights; repair the exact file from a local administrative console or a controlled
+SYSTEM task if necessary. Backup-mode config editing preserves an incorrect
+owner until it is repaired explicitly. Do not dismiss a nonzero installer exit.
+
+## Log entries have no timestamps
+
+The -E sshd.log output has no per-line timestamps. Correlate it with the Windows
+System log's Service Control Manager timestamps and record collection times.
+Changing SyslogFacility does not add timestamps to -E output. The installation
+guide describes the alternative event/syslog route and its rendering limits.
+
 ## First login returns no output
 
 The first SSH command for a new account may finish with the expected exit code

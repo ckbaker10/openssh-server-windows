@@ -47,6 +47,54 @@ them up under `etc\backups\<UTC>-<ID>`. Missing files are copied from
 Stop a running service with the same name first. An existing registration keeps
 its executable path and arguments; use the update procedure when moving it.
 
+New registrations use **Automatic (Delayed Start)** and depend on TCP/IP.
+The delay reduces exposure to early boot failures; it does not prove that
+Windows authentication and profile services are ready. Existing registrations
+keep their startup settings. To change only the startup mode of your existing
+service, run `sc.exe config openssh-cygwin start= delayed-auto` and check
+`$LASTEXITCODE`. Do not replace its dependency list blindly.
+
+The installer retains ssh-host-config's error/warning count as its exit code.
+An additional startup-configuration failure also returns nonzero. A service
+can be registered and pass `sshd -t` while ownership repairs have failed.
+Read all diagnostics and complete the checks below before starting it.
+
+## Verify SYSTEM ownership
+
+Check sshd_config and every private host key after setup and upgrades:
+
+```powershell
+$Root = 'C:\Program Files\OpenSSH-Cygwin'
+$Files = @((Join-Path $Root 'etc\sshd_config')) + @(
+    Get-ChildItem -LiteralPath "$Root\etc" -Filter 'ssh_host_*_key' -File |
+        Select-Object -ExpandProperty FullName
+)
+foreach ($File in $Files) {
+    $Acl = Get-Acl -LiteralPath $File -ErrorAction Stop
+    [pscustomobject]@{ Path = $File; Owner = $Acl.Owner }
+    if ($Acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne 'S-1-5-18') {
+        Write-Warning "Expected SYSTEM owner: $File"
+    }
+}
+```
+
+The expected owner is SYSTEM (SID S-1-5-18). The installer first tries Cygwin
+chown, then icacls /setowner on that exact file, and verifies the resulting UID.
+It reports failures rather than treating a running service as proof of success.
+If the fallback is denied, use an elevated local console; if necessary, execute
+the same repair as SYSTEM through a controlled administrative task:
+
+```powershell
+icacls.exe "$Root\etc\sshd_config" /setowner '*S-1-5-18'
+if ($LASTEXITCODE -ne 0) { throw 'SYSTEM owner repair failed' }
+```
+
+Repeat only for each incorrectly owned private key, then check owners and
+`sshd -t` again. Do not grant broad read access or recursively change the tree.
+SSH administrator sessions can have different backup/restore privileges from
+a local console. Robocopy /B /COPY:DAT preserves the existing owner, including
+an incorrect one; it is not an ownership repair.
+
 ## Set up an administrator's key
 
 Open the bundled shell as the target user:
@@ -89,6 +137,36 @@ This example applies to your own account; specify the target account name
 when preparing another user's home. Never assign the whole installation tree
 to a regular user. Keep StrictModes enabled.
 
+## Domain members and account selection
+
+On a domain member, an unqualified name such as Administrator can resolve to
+the domain account. A local account may be named `MACHINE+Administrator` in
+Cygwin. Inspect `getent passwd 'MACHINE+Administrator'` and
+`id 'MACHINE+Administrator'` in the bundled shell; verify the Windows SID,
+UID and home before installing a key. Use the exact Cygwin name in AllowUsers
+and connect with `ssh -l 'MACHINE+Administrator' server.example`.
+
+The compatibility default `db_home: /home/%U` uses the Windows account name.
+Local and domain accounts with that name can therefore share the same home
+path even though their SIDs differ. Never infer the home from the qualified
+login name or put keys for different identities into a shared home.
+
+Cygwin supports `db_home: /home/%D/%U`, where %D is the NetBIOS domain and %U
+the Windows name. It separates domain and machine identities. This package
+does not switch existing installations automatically: changing it redirects
+homes for all database accounts and can lock users out. For a planned migration,
+stop the service, back up NSS/configuration/homes with their ACLs, change NSS,
+open a fresh bundled shell and inspect each account's new passwd record. Move
+each account's data and keys to its resolved home with the correct owner and
+700/700/600 permissions; test every intended identity before removing old data.
+Explicit /etc/passwd records take precedence. Restart processes to reread NSS.
+
+The install-user helper supports only the documented existing local-account
+`/home/NAME` layout. It rejects qualified names, unexpected homes or a SID
+mismatch; configure domain/qualified accounts and alternative layouts manually.
+This prevents an ambiguous name from provisioning the wrong identity.
+[Cygwin account and home settings](https://cygwin.com/cygwin-ug-net/ntsec.html).
+
 ## Check, start and connect
 
 Every Bash invocation without profiles needs the Cygwin PATH. Use single quotes
@@ -103,6 +181,13 @@ Get-Content .\var\log\sshd.log -Tail 10
 ```
 
 Allow the chosen TCP port through the firewall for the required sources.
+Before exposing any listening port, configure **AllowUsers** with the exact
+accounts you intend to admit, using the SYSTEM configuration procedure below.
+Without it, any otherwise eligible Cygwin account with an accepted key may log
+in, including domain accounts. The defaults include a commented hardening
+example for AuthenticationMethods publickey, MaxAuthTries 3, LoginGraceTime 30
+and AllowUsers. Replace the account placeholder before enabling it. Keep an
+existing tested administrator in the list while adding accounts.
 Verify host keys through a trusted channel and save them on the client.
 Then connect, for example, with
 `ssh -o StrictHostKeyChecking=yes -p 2222 Administrator@server.example`.
@@ -112,6 +197,13 @@ The default configuration disables passwords, keyboard-interactive authenticatio
 and X11. SFTP runs internally; shells and commands use Cygwin Bash. Win32 OpenSSH
 registry settings for the default shell do not apply here. Bash scripts need LF
 line endings. Convert your own CRLF scripts with `sed -i 's/\r$//' file.sh` if needed.
+
+SCP/SFTP paths use Cygwin syntax: `server.example:/cygdrive/c/Temp/file`,
+instead of Windows OpenSSH's `/C:/Temp/file`. Commands run through Bash;
+use `powershell.exe -File C:/Temp/task.ps1` with forward slashes, or
+`powershell.exe -NoProfile -EncodedCommand <UTF-16LE-Base64>` to avoid nested
+quoting. For complex Bash commands, transfer an LF .sh file and execute it
+with the explicit PATH export rather than nesting several quote layers.
 
 ## Edit SYSTEM-owned configuration
 
@@ -155,6 +247,12 @@ changes by restoring an old complete configuration.
 
 New registrations start sshd with `-D -E /var/log/sshd.log`; the file is
 `var\log\sshd.log` in the installation tree. The default LogLevel is INFO.
+OpenSSH's -E file output has no per-line timestamp in this build. Correlate
+service starts/exits with timestamped Service Control Manager events in the
+Windows System log. SyslogFacility applies to syslog/event routing when -E
+is removed from the service arguments; changing SyslogFacility alone does not
+timestamp the -E file. Event message rendering depends on the installed event
+source. Do not assume those messages are complete without testing the route.
 Use the configuration procedure above to enable VERBOSE. For manual rotation,
 run elevated PowerShell inside the installation directory:
 
@@ -195,6 +293,36 @@ create an administrative maintenance job with error handling and a retention pol
 continue with incomplete data when backup rights are missing or copying fails.
 To roll back, stop/remove the new service, restore the old tree with its saved
 data and permissions, and recreate its service registration.
+
+## Migrate from Windows OpenSSH
+
+Keep an independent administrative console or management path throughout the
+change. First run this service on a different port, restrict its firewall rule,
+set AllowUsers and test authentication, permissions, transfers and automation.
+Check the new host-key fingerprint through the trusted management path:
+
+```powershell
+.\bin\ssh-keygen.exe -lf .\etc\ssh_host_ed25519_key.pub
+```
+
+If the new server uses different keys, compare the fingerprint before updating
+the client's known_hosts entry. Do not bypass host-key checking.
+
+Prepare the final port using the protected configuration workflow, with the
+Cygwin service stopped. Keep the Windows service's previous startup mode and
+working configuration available. Before cutover, schedule a SYSTEM rollback
+task for about ten minutes later: stop and disable the Cygwin service, restore
+the Windows service's previous startup mode and start it. Ensure the rollback script and
+any saved configuration are writable only by Administrators/SYSTEM.
+
+Use a separate SYSTEM task or the independent console for the cutover:
+`Stop-Service sshd`, `Set-Service sshd -StartupType Disabled`, then
+`Start-Service openssh-cygwin`. Stopping Windows sshd can end the SSH session
+that requested it. Do not run both services on the same address/port. Confirm
+the new service from another connection, including host identity and account
+permissions, before cancelling the rollback task. Keep the fallback until
+reboot startup has also been checked. These task names and service names must
+be adapted to the installations you control.
 
 ## NTFS permissions and removal
 

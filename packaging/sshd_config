@@ -6,3 +6,11 @@ KbdInteractiveAuthentication no
 X11Forwarding no
 Compression no
 Subsystem sftp internal-sftp
+
+# Review and enable an explicit allowlist before exposing the service.
+# Use exact Cygwin names from getent passwd, including MACHINE+ for local
+# accounts on domain members. Replace the example before uncommenting.
+# AuthenticationMethods publickey
+# MaxAuthTries 3
+# LoginGraceTime 30
+# AllowUsers REPLACE_WITH_EXACT_CYGWIN_ACCOUNT

@@ -57,6 +57,39 @@ class InstallerArguments(unittest.TestCase):
         result = bash(code)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_startup_failures_and_helper_warnings_retain_owner_check(self):
+        for existing, installed, helper_rc, startup_rc in [
+                ('no', 0, 0, 0), ('no', 0, 0, 5), ('no', 0, 2, 0),
+                ('no', 0, 2, 5), ('yes', 0, 0, 5), ('no', 1, 1, 0)]:
+            with self.subTest(existing=existing, installed=installed,
+                              helper=helper_rc, startup=startup_rc):
+                code = ('source ' + shlex.quote(str(ROOT / 'packaging/install-server.sh'))
+                        + '; service_name=test-sshd; '
+                        + f'cygrunsrv() {{ return {installed}; }}; '
+                        + f'configure_delayed_start() {{ echo startup; return {startup_rc}; }}; '
+                        + f'finish_service_setup {existing} {helper_rc}')
+                result = bash(code)
+                changed = existing == 'no' and installed == 0
+                self.assertEqual(result.returncode, helper_rc or (startup_rc if changed else 0))
+                self.assertEqual('startup\n' in result.stdout, changed)
+                self.assertIn('Get-Acl', result.stdout)
+                if helper_rc:
+                    self.assertIn(f'{helper_rc} errors/warnings', result.stderr)
+
+    def test_sc_sets_delayed_start_only_for_selected_service(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp) / 'System32'
+            directory.mkdir()
+            sc = directory / 'sc.exe'
+            sc.write_text('#!/bin/bash\nprintf "%s\\n" "$@"\nexit 5\n')
+            sc.chmod(0o755)
+            code = ('source ' + shlex.quote(str(ROOT / 'packaging/install-server.sh'))
+                    + '; export SYSTEMROOT=' + shlex.quote(tmp)
+                    + '; cygpath() { printf "%s" "$2"; }; service_name=my-sshd; configure_delayed_start')
+            result = bash(code)
+            self.assertEqual(result.returncode, 5)
+            self.assertEqual(result.stdout.splitlines(), ['config', 'my-sshd', 'start=', 'delayed-auto'])
+
 
 class PackagedHelper(unittest.TestCase):
     @classmethod
@@ -105,17 +138,47 @@ class PackagedHelper(unittest.TestCase):
 
     def test_owner_change_skips_correct_owner_but_reports_real_failures(self):
         function = self.function('openssh_chown_service_file')
-        for owner, change_exit in [('18', 1), ('1000', 0), ('1000', 1)]:
-            with self.subTest(owner=owner, change_exit=change_exit):
+        for owner, chown_rc, fallback_rc, fallback_owner, expected_rc in [
+                ('18', 1, 1, '1000', 0), ('1000', 0, 1, '1000', 0),
+                ('1000', 1, 0, '18', 0), ('1000', 1, 5, '1000', 1),
+                ('1000', 1, 0, '1000', 1)]:
+            with self.subTest(owner=owner, chown=chown_rc, fallback=fallback_rc,
+                              verified=fallback_owner), tempfile.TemporaryDirectory() as tmp:
+                state = Path(tmp) / 'owner'
+                state.write_text(owner)
+                directory = Path(tmp) / 'System32'
+                directory.mkdir()
+                acl = directory / 'icacls.exe'
+                acl.write_text('#!/bin/bash\nprintf "icacls:%s\\n" "$*"\n'
+                               + f'echo {fallback_owner} > ' + shlex.quote(str(state))
+                               + f'\nexit {fallback_rc}\n')
+                acl.chmod(0o755)
                 code = ('run_service_as=SYSTEM; id() { echo 18; }; '
-                        + 'stat() { echo ' + owner + '; }; '
-                        + 'chown() { echo "chown:$*"; return ' + str(change_exit) + '; };\n'
+                        + 'export SYSTEMROOT=' + shlex.quote(tmp) + '; '
+                        + 'stat() { cat ' + shlex.quote(str(state)) + '; }; '
+                        + 'cygpath() { printf "%s" "$2"; }; '
+                        + 'chown() { echo "chown:$*"; '
+                        + (f'echo 18 > {shlex.quote(str(state))}; ' if chown_rc == 0 else '')
+                        + f'return {chown_rc}; }};\n'
                         + function + '\nopenssh_chown_service_file /test-key')
                 result = bash(code)
-                self.assertEqual(result.returncode, 0 if owner == '18' else change_exit)
+                self.assertEqual(result.returncode, expected_rc, result.stderr)
                 self.assertEqual('chown:' in result.stdout, owner != '18')
                 if owner != '18':
                     self.assertIn('SYSTEM.544 /test-key', result.stdout)
+                fallback = owner != '18' and chown_rc != 0
+                self.assertEqual('icacls:' in result.stdout, fallback)
+                if fallback:
+                    self.assertIn('/test-key /setowner *S-1-5-18', result.stdout)
+
+    def test_owner_fallback_refuses_other_service_identities(self):
+        code = ('run_service_as=other; id() { echo 1000; }; stat() { echo 2000; }; '
+                'chown() { return 1; }; cygpath() { echo unexpected >&2; return 9; };\n'
+                + self.function('openssh_chown_service_file')
+                + '\nopenssh_chown_service_file /test-key')
+        result = bash(code)
+        self.assertEqual(result.returncode, 1)
+        self.assertNotIn('unexpected', result.stderr)
 
 
 if __name__ == '__main__':
