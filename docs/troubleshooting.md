@@ -39,11 +39,32 @@ and investigate compatibility of installed security/hooking software.
 The sshd message alone does not identify a specific cause.
 [Cygwin: fork failures](https://cygwin.com/faq/faq.html#faq.using.fixing-fork-failures).
 
+If a fork diagnostic includes `0xC0000142`, Windows defines this as
+`STATUS_DLL_INIT_FAILED`: DLL initialization failed in the child process.
+The code identifies neither the DLL nor the underlying cause. Record the
+complete diagnostic and whether setup was running in an interactive or remote
+session. DLL placement, injected software and session resources need evidence
+before choosing a fix; do not rebase installed DLLs while processes use them.
+[Microsoft: NTSTATUS values](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-erref/596a1078-e883-4972-9bbc-49e60bebca55).
+
 Retry operations that are safe to repeat after an isolated failure; check
 destination files and hashes after transfers. Do not blindly repeat commands
 with unknown partial effects. MaxStartups controls concurrent unauthenticated
 connections and is not a demonstrated fix for this fork error. Do not add
 blanket antivirus exclusions or make global security changes.
+
+## First login returns no output
+
+The first SSH command for a new account may finish with the expected exit code
+but no output. Open a new connection and try a harmless diagnostic such as
+`printf 'SSH output check\n'`. Check standard output, standard error and the exit
+code separately. Do not repeat a command with side effects until its result has
+been checked.
+
+Windows profile initialization is a possible explanation, but the cause has
+not been established. If the problem persists after the first login, collect
+client diagnostics and the corresponding server log rather than treating it
+as normal startup behavior.
 
 ## Windows profile remains loaded
 
