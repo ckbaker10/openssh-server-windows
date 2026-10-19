@@ -38,6 +38,9 @@ podman run --rm --name openssh-server-windows-check \
 shellcheck -S warning scripts/*.sh packaging/*.sh
 hadolint build/Containerfile build/Containerfile.wine
 python3 -m unittest discover -s tests -v
+podman run --rm --name openssh-server-windows-user-tests \
+  -v "$PWD:/project:Z" mcr.microsoft.com/powershell:lts-ubuntu-22.04 \
+  pwsh -NoProfile -File /project/tests/check-user-setup.ps1
 ```
 
 Der Cross-Build und die Prüfung des entpackten ZIPs sind erfolgreich. Die
@@ -94,6 +97,16 @@ SYSTEM-ACL-Aufruf, die Prüfer-Pfadermittlung und unnötige Besitzerwechsel;
 die Anleitung verwendet Robocopy `/B`. Neue Korrekturen, Neustart und Rückkehr
 brauchen noch eine Windows-Abnahme; weiterhin Prerelease.
 Details: [Prüfbericht der Paketrevision 4](docs/release-v10.6p1-cygwin.4.md).
+
+Für ein vorhandenes lokales Nicht-Administrator-Konto mit neuem Cygwin-Home:
+als Administrator `install-user.cmd sshtest C:\Keys\sshtest.pub` ausführen.
+Der Helfer prüft Konto/SID, setzt Besitzer und Modi, ergänzt eine vorhandene
+globale AllowUsers-Liste und prüft die Konfiguration vor dem Dienststart.
+Details und Grenzen: [Nicht-Administrator-Konten](docs/nonadmin-users.md).
+Die [native Teilabnahme der manuellen Einrichtung in Revision 4](docs/windows-validation-nonadmin-2026-10-19.md)
+bestätigt den eingeschränkten Token und Dateiübertragungen. Der neue Helfer
+selbst benötigt noch einen Windows-Test; weiterhin Prerelease.
+Details: [Prüfbericht und Profil-Quellbefund der Revision 5](docs/release-v10.6p1-cygwin.5.md).
 
 ## Wöchentliche Pflege und Releases
 

@@ -54,6 +54,9 @@ assert 'db_home: /home/%U' in (root / 'etc/nsswitch.conf').read_text()
 helper = (root / 'bin/ssh-host-config').read_text()
 assert '-D -E /var/log/sshd.log' in helper
 assert 'Keeping existing $1' in helper
-for name in ['install-server.sh', 'open-shell.sh']:
+for name in ['install-server.sh', 'open-shell.sh', 'install-user.sh']:
     assert b'\r' not in (root / name).read_bytes()
+for name in ['install-user.cmd', 'install-user.ps1', 'user-setup.psm1']:
+    assert (root / name).is_file(), name
+assert b'\r\n' in (root / 'install-user.cmd').read_bytes()
 print('ZIP CRC, Windows paths, no manuals, complete manifest, hashes, PE imports, configuration and key absence: PASS')

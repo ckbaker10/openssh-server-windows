@@ -41,6 +41,19 @@ PowerShell-Standardpfad erst nach Parameterbindung mit MyInvocation-Rückfall
 auflösen; explizites `-Path` dokumentieren. Robocopy-Sicherung und Übernahme
 mit `/B` beschreiben, damit private Hostschlüssel vollständig erhalten bleiben.
 
+Nicht-Administrator-Konten über `install-user.cmd` für bestehende lokale,
+aktivierte Konten mit neuem /home/NAME einrichten. Vorhandene Homes nicht
+überschreiben, keine Konten/Passwörter/Gruppen automatisch ändern. SID- und
+Gruppenprüfung, gezielte Besitzer/700/700/600, Backupmodus und ACL-Erhalt für
+SYSTEM-Konfiguration, globale vorhandene AllowUsers ohne Duplikate erhalten.
+Include-Konfigurationen manuell prüfen; Match-Blöcke nicht verändern. Nur eigenen
+Dienst steuern, bei Mutationsfehlern Konfiguration zurückspielen und Dienst
+gestoppt lassen. Tests/check-user-setup.ps1 mit Windows-Mocks ist keine native
+Abnahme. Native manuelle Teilabnahme unter docs/windows-validation-nonadmin-2026-10-19.md.
+Geladenes Windows-Profil nicht als bewiesenes Tokenleck darstellen: Cygwin hat
+in sec/auth.cc einen offenen TODO zum zuverlässigen Profilentladen. Keine
+erzwungenen Hive-/Profil-/PATH-Änderungen ohne eigene Prüfung.
+
 ZIP-Prüfung, DLL-/Versionsnachweise und ergänzende Laufzeittests vor Veröffentlichung
 ausführen. Ohne belegte native Windows-Abnahme weiterhin Prereleases veröffentlichen
 und diese Grenze nennen. Keine bestehenden Release-Tags verschieben oder bereits

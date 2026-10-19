@@ -174,7 +174,8 @@ def main():
             shutil.rmtree(directory)
     skipped = materialize_links(output)
     for name in ['sshd_config', 'nsswitch.conf', 'install-server.sh', 'install-server.cmd',
-                 'open-shell.sh', 'open-shell.cmd', 'verify-package.ps1']:
+                 'open-shell.sh', 'open-shell.cmd', 'verify-package.ps1',
+                 'install-user.cmd', 'install-user.ps1', 'install-user.sh', 'user-setup.psm1']:
         dest = output / ('etc/' + name if name in ['sshd_config', 'nsswitch.conf'] else name)
         shutil.copy2(ROOT / 'packaging' / name, dest)
     defaults = output / 'etc/defaults/etc'
@@ -185,12 +186,13 @@ def main():
                     '-p1', '-d', str(output), '-i',
                     str(ROOT / 'patches/cygwin-host-config.patch')], check=True)
     # Batch files need CRLF when extracted by ordinary Windows ZIP tools.
-    for name in ['install-server.cmd', 'open-shell.cmd']:
+    for name in ['install-server.cmd', 'open-shell.cmd', 'install-user.cmd']:
         batch = output / name
         batch.write_bytes(batch.read_bytes().replace(b'\r\n', b'\n').replace(b'\n', b'\r\n'))
     for directory in ['var/empty', 'var/log', 'var/run', 'home', 'tmp']:
         (output / directory).mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / 'docs' / 'windows-installation.md', output / 'INSTALLATION.md')
+    shutil.copy2(ROOT / 'docs' / 'nonadmin-users.md', output / 'NONADMIN-USERS.md')
     shutil.copy2(ROOT / 'build' / 'inputs.lock.json', output / 'inputs.lock.json')
     duplicates = deduplicate_windows_files(output)
     validate_windows_paths(str(p.relative_to(output)) for p in output.rglob('*'))

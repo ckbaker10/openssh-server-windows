@@ -1,0 +1,4 @@
+@echo off
+setlocal
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -File "%~dp0install-user.ps1" %*
+exit /b %errorlevel%

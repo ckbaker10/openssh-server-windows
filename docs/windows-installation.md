@@ -74,6 +74,13 @@ Cygwin-Bash. Registry-Einstellungen der nativen Win32-OpenSSH-Shell gelten hier 
 
 ## 3. Home und öffentliche Schlüssel
 
+Für ein vorhandenes lokales Nicht-Administrator-Konto mit **neuem** Cygwin-Home
+gibt es jetzt den separaten administrativen Helfer:
+`.\install-user.cmd sshtest 'C:\Keys\sshtest.pub'`.
+Er übernimmt SID-/Gruppenprüfung, Besitzer, Modi, eine bestehende globale
+AllowUsers-Liste, Syntaxprüfung und Dienstneustart. Details, Grenzen und Aufräumen
+stehen in `NONADMIN-USERS.md` im ZIP bzw. `docs/nonadmin-users.md` im Repository.
+
 `etc\nsswitch.conf` setzt `db_home: /home/%U` und `db_shell: /bin/bash`.
 Bei Domänenkonten kann `%U` qualifiziert sein. Vorhandene `/etc/passwd`-Einträge
 haben Vorrang und müssen separat geprüft werden. `bin\bash.exe` allein kann
@@ -146,8 +153,8 @@ meldete acht Besitzwarnungen bei bereits SYSTEM gehörenden übernommenen Schlü
 deren Fingerprints blieben laut Windows-Test gleich. Eine Warnung nur dann als
 unnötigen Besitzerwechsel einordnen, wenn die tatsächlichen Besitzer stimmen.
 
-Standard-LogLevel ist `INFO`; für mehr Details `LogLevel VERBOSE` in
-`etc\sshd_config` eintragen und neu starten. Die Dateiprotokollierung umgeht
+Standard-LogLevel ist `INFO`; für mehr Details `LogLevel VERBOSE` über den
+Konfigurationsablauf unten setzen und neu starten. Die Dateiprotokollierung umgeht
 fehlende Meldungstexte der Windows-Ereignisquelle `sshd`.
 Es gibt keine automatische Rotation. Beispiel für manuelle Rotation mit kurzer
 Dienstunterbrechung in administrativer PowerShell im Installationsverzeichnis:
@@ -171,6 +178,48 @@ administrativen Wartungsjob mit Fehlerprotokollierung ausführen. Logs können
 Benutzernamen und Verbindungsdaten enthalten.
 
 ## 5. NTFS-Rechte, Aktualisierung und Entfernen
+
+### SYSTEM-Konfiguration bearbeiten
+
+Nach der Einrichtung kann `etc\sshd_config` auch für Administratoren direkt
+unlesbar sein. Für Änderungen wie LogLevel oder AllowUsers eine geschützte
+Arbeitskopie per Backupmodus verwenden. Besitzer und ACL des Originals behalten.
+Beispiel in erhöhter PowerShell, Pfad anpassen:
+
+```powershell
+$Root = 'C:\Program Files\OpenSSH-Cygwin'
+$Edit = Join-Path $Root ('var\backups\config-' + [guid]::NewGuid().ToString('N'))
+$Original = Join-Path $Edit 'original'
+$Changed = Join-Path $Edit 'changed'
+New-Item -ItemType Directory -Path $Original,$Changed -Force | Out-Null
+icacls.exe $Edit /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F'
+if ($LASTEXITCODE -ne 0) { throw 'Backupordner konnte nicht geschützt werden' }
+robocopy "$Root\etc" $Original sshd_config /B /COPY:DAT /R:0 /W:0
+if ($LASTEXITCODE -ge 8) { throw 'Konfiguration konnte nicht gesichert werden' }
+Copy-Item "$Original\sshd_config" "$Changed\sshd_config"
+$Before = (Get-Acl -LiteralPath "$Root\etc\sshd_config").Sddl
+Start-Process notepad.exe -ArgumentList ('"' + "$Changed\sshd_config" + '"') -Wait
+$Text = [IO.File]::ReadAllText("$Changed\sshd_config").Replace("`r`n","`n")
+[IO.File]::WriteAllText("$Changed\sshd_config", $Text, (New-Object Text.UTF8Encoding($false)))
+robocopy $Changed "$Root\etc" sshd_config /B /COPY:DAT /IS /IT /R:0 /W:0
+if ($LASTEXITCODE -ge 8) { throw 'Zurückkopieren fehlgeschlagen; Sicherung behalten' }
+if ((Get-Acl -LiteralPath "$Root\etc\sshd_config").Sddl -ne $Before) { throw 'Besitzer/ACL haben sich verändert' }
+& "$Root\bin\bash.exe" --noprofile --norc -c '/usr/sbin/sshd -t'
+if ($LASTEXITCODE -ne 0) {
+    robocopy $Original "$Root\etc" sshd_config /B /COPY:DAT /IS /IT /R:0 /W:0
+    if ($LASTEXITCODE -ge 8) { throw 'Rückkehr zur Sicherung fehlgeschlagen; Dienst nicht starten' }
+    throw 'Syntaxfehler; alte Konfiguration zurückgespielt'
+}
+Restart-Service openssh-cygwin
+```
+
+Die Sicherung behalten, bis Anmeldung und Logs geprüft sind. Eine alte
+Gesamtkonfiguration später nicht über zwischenzeitliche Änderungen kopieren.
+Dieser Ablauf benötigt die Rechte für Robocopy /B. Er lockert weder den
+Konfigurationsbesitzer noch StrictModes. Nicht-Administrator-Konten können
+und sollen diese Änderungen nicht selbst ausführen.
+
+### Rechte sichern und aktualisieren
 
 Cygwin bildet POSIX-Rechte auf NTFS-ACLs ab. Dabei können `NULL SID:(DENY)` und
 Einträge der Gruppe `None` erscheinen. Revision 1 änderte durch pauschales
