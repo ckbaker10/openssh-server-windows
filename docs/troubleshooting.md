@@ -1,85 +1,85 @@
-# Fehlerhilfe und Cygwin-Grenzen
+# Troubleshooting and Cygwin limitations
 
-## Exitcode 127 bei Bash-Aufrufen
+## Exit code 127 from Bash
 
-Mit --noprofile --norc übernimmt Bash den umgesetzten Windows-PATH. Für
-Cygwin-Programme und deren Abhängigkeiten /usr/bin, /bin und /usr/sbin ergänzen:
+With --noprofile --norc, Bash inherits the translated Windows PATH. Add
+/usr/bin, /bin and /usr/sbin for Cygwin programs and their dependencies:
 
 ```powershell
 .\bin\bash.exe --noprofile --norc -c 'export PATH=/usr/bin:/bin:/usr/sbin:$PATH; /usr/sbin/sshd -t'
 ```
 
-In eigenen .sh-Dateien den Export an den Anfang setzen und LF-Zeilenenden
-verwenden. Keine dauerhafte Änderung des globalen Windows-PATH ist dafür nötig.
-Der Benutzerhelfer setzt diesen PATH für seine Syntaxprüfung selbst.
+Put this export at the beginning of your own .sh files and use LF line endings.
+No permanent change to the global Windows PATH is needed. The user helper
+sets this PATH for its syntax check.
 
-## SYSTEM-Konfiguration lässt sich nicht lesen
+## Cannot read SYSTEM-owned configuration
 
-sshd_config kann nach Einrichtung ausschließlich SYSTEM gehören und für
-Administratoren unlesbar sein. Über Robocopy /B /COPY:DAT in einen geschützten
-Arbeitsordner kopieren, dort bearbeiten und mit /IS /IT zurückkopieren.
-Exitcodes prüfen, Besitzer/ACL erhalten und vor Neustart sshd -t ausführen.
-Der vollständige Ablauf steht in INSTALLATION.md. StrictModes nicht abschalten.
+After setup, sshd_config may be owned exclusively by SYSTEM and unreadable
+to administrators. Copy it to a protected working directory using
+Robocopy /B /COPY:DAT, edit it there, and copy it back with /IS /IT.
+Check exit codes, preserve ownership/ACLs and run sshd -t before restarting.
+The full procedure is in INSTALLATION.md. Keep StrictModes enabled.
 
-## Benutzerhelfer endet mit gestopptem Dienst
+## User helper leaves the service stopped
 
-Nach einem Mutationsfehler wird die Konfiguration zurückgespielt und der Dienst
-zur Prüfung gestoppt gelassen. Konfiguration und eventuell angelegtes Home
-prüfen. Für einen erfolgreichen neuen Einrichtungslauf `-Start` verwenden;
-zum anschließenden manuellen Start `Start-Service openssh-cygwin` ausführen.
-Ein vorhandenes Home wird auch nach einem Fehlversuch nicht überschrieben.
+After a failed change, the configuration is restored and the service is left
+stopped for inspection. Review the configuration and any newly created home.
+Use `-Start` for a successful new setup attempt, or run
+`Start-Service openssh-cygwin` afterwards. An existing home is not overwritten,
+including after an earlier failed attempt.
 
-## Sporadischer fork-Fehler oder Verbindungsabbruch
+## Intermittent fork errors or dropped connections
 
-`fork of unprivileged child failed` bedeutet, dass ein Cygwin-Kindprozess nicht
-erstellt werden konnte. Die Cygwin-FAQ nennt unter anderem DLL-Adressraumkonflikte
-und störende Drittsoftware als mögliche Ursachen. Serverlog und Windows-
-Ereignisse zum gleichen Zeitpunkt sichern, freien Speicher und Runtime-Version
-prüfen und die Kompatibilität installierter Schutz-/Hooksoftware untersuchen.
-Eine konkrete Ursache lässt sich aus der sshd-Meldung allein nicht ableiten.
+`fork of unprivileged child failed` means that Cygwin could not create a child
+process. The Cygwin FAQ lists DLL address-space conflicts and interference
+from third-party software among possible causes. Collect server logs and
+Windows events for the same time, check available memory and runtime version,
+and investigate compatibility of installed security/hooking software.
+The sshd message alone does not identify a specific cause.
 [Cygwin: fork failures](https://cygwin.com/faq/faq.html#faq.using.fixing-fork-failures).
 
-Wiederholbare Operationen können nach einem einzelnen Abbruch erneut versucht
-werden; nach Transfers Zieldatei und Hash prüfen. Befehle mit unbekannter
-Teilwirkung nicht blind wiederholen. MaxStartups steuert parallele noch nicht
-authentifizierte Verbindungen und ist kein belegter Fix für diesen fork-Fehler.
-Keine pauschalen Virenscanner-Ausnahmen oder globalen Sicherheitsänderungen vornehmen.
+Retry operations that are safe to repeat after an isolated failure; check
+destination files and hashes after transfers. Do not blindly repeat commands
+with unknown partial effects. MaxStartups controls concurrent unauthenticated
+connections and is not a demonstrated fix for this fork error. Do not add
+blanket antivirus exclusions or make global security changes.
 
-## Windows-Profil bleibt geladen
+## Windows profile remains loaded
 
-Das Profil eines per Schlüssel angemeldeten Kontos kann nach Sitzungsende,
-Dienststopp oder Kontolöschung geladen bleiben. Cygwin dokumentiert in
-`winsup/cygwin/sec/auth.cc`, Funktion load_user_profile, einen vorerst behaltenen
-Registry-Handle und einen offenen TODO zum zuverlässigen Profilentladen.
-Das belegt keine konkrete S4U-Tokenursache und kein gemessenes Speicherwachstum.
+A key-authenticated account's profile may remain loaded after its session
+ends, the service stops or the account is deleted. In
+`winsup/cygwin/sec/auth.cc`, load_user_profile documents a registry handle
+that is retained for now and an open TODO for reliable profile unloading.
+This does not establish a specific S4U token cause or measured memory growth.
 
-SID vor Kontolöschung festhalten. Nach einem geplanten Neustart anhand genau
-dieser SID prüfen und nur ein nicht mehr geladenes Profil entfernen:
+Record the SID before deleting the account. After a planned reboot, use that
+exact SID to check and remove only a profile that is no longer loaded:
 
 ```powershell
-$Sid = '<zuvor festgehaltene Benutzer-SID>'
+$Sid = '<previously recorded user SID>'
 $Profile = Get-CimInstance Win32_UserProfile -Filter "SID='$Sid'"
 $Profile | Select-Object SID,LocalPath,Loaded
 if ($Profile -and -not $Profile.Loaded) { $Profile | Remove-CimInstance }
 ```
 
-Bei Loaded=True nicht erzwingen: kein reg unload und kein pauschales Löschen
-von HKEY_USERS, ProfileList oder Profilverzeichnissen. Eine Runtime-Korrektur
-benötigt reproduzierbare Handle-/Profilmessungen und Windows-Abnahme.
+If Loaded=True, do not force removal: do not run reg unload or broadly delete
+HKEY_USERS, ProfileList or profile directories. A runtime fix requires
+reproducible handle/profile measurements and validation on Windows.
 
-## PATH und Werkzeuge in SSH-Sitzungen
+## PATH and tools in SSH sessions
 
-Cygwin-OpenSSH übernimmt Teile der Dienstumgebung einschließlich PATH.
-Dadurch können Systemprofilpfade oder weitere SSH-Installationen auftauchen.
-In Skripten absolute Pfade oder `command -v ssh` beziehungsweise
-`command -v powershell.exe` verwenden. command -v ist in Bash eingebaut;
-ein zusätzliches which ist nicht erforderlich. Die Einrichtung ändert weder
-den globalen PATH noch die Shell-Vorgabe für andere Anwendungen.
+Cygwin OpenSSH inherits parts of the service environment, including PATH.
+This can include system profile paths or other SSH installations. Use absolute
+paths or `command -v ssh` and `command -v powershell.exe` in scripts.
+command -v is built into Bash; a separate which program is not required.
+Setup changes neither the global PATH nor the default shell for other applications.
 
-## Umfang der Abnahme
+## Validation scope
 
-Linux-/Wine-Prüfungen und simulierte Windows-Schnittstellen ersetzen keine
-native Windows-Abnahme. Neue Helferpfade, Dienststart nach Neustart, Rückkehr,
-Domänen-/Zusatzgruppen, parallele Sitzungen, Netzfreigaben und Ansible gesondert
-prüfen. Schlüsselanmeldung kann für Netzfreigaben zusätzliche Windows-
-Authentifizierung benötigen. Bis zur vollständigen Abnahme bleiben Releases Prereleases.
+Linux/Wine checks and simulated Windows interfaces do not replace native
+Windows validation. Test new helper paths, service startup after reboot,
+rollback, domain/additional groups, concurrent sessions, network shares and
+Ansible separately. Key authentication may require additional Windows
+authentication for network shares. Releases remain prereleases until
+validation is complete.

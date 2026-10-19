@@ -1,100 +1,99 @@
-# Unprivilegierte Benutzer einrichten
+# Set up unprivileged users
 
-Der SSH-Dienst bleibt LocalSystem. `install-user.cmd` richtet als Administrator
-ein vorhandenes Windows-Konto für spätere eingeschränkte SSH-Sitzungen ein.
-Er legt keine Windows-Konten an und ändert weder Gruppen noch Kennwörter.
+The SSH service remains LocalSystem. An administrator runs `install-user.cmd`
+to prepare an existing Windows account for restricted SSH sessions.
+It does not create Windows accounts or change groups or passwords.
 
-## Voraussetzungen
+## Requirements
 
-- Aktiviertes lokales Konto ohne Administratorrechte; Built-in Administrator
-  und Guest werden abgewiesen.
-- Genau eine öffentliche OpenSSH-Schlüsseldatei, ohne private Daten oder
-  authorized_keys-Optionen.
-- Neues Cygwin-Home `/home/<Kontoname>` gemäß nsswitch.conf. Bestehende Homes
-  werden vor Änderungen abgewiesen und niemals überschrieben.
-- Erhöhte 64-Bit-PowerShell und verfügbarer Robocopy-Backupmodus.
+- An enabled local account without administrator rights; the built-in
+  Administrator and Guest accounts are rejected.
+- Exactly one OpenSSH public key file, without private data or authorized_keys options.
+- A new Cygwin home `/home/<username>` as specified by nsswitch.conf.
+  Existing homes are rejected before changes and are never overwritten.
+- Elevated 64-bit PowerShell and available Robocopy backup mode privileges.
 
-Kontonamen dürfen 1-20 ASCII-Zeichen aus Buchstaben, Ziffern, `_`, `.` und `-`
-enthalten, nicht mit einem Punkt enden und müssen mit Buchstabe/Ziffer beginnen.
-Domänenkonten und abweichende Homepfade sind im Helfer nicht unterstützt.
+Account names may contain 1-20 ASCII letters, digits, `_`, `.` or `-`, must
+start with a letter or digit, and must not end with a dot. The helper does
+not support domain accounts or alternative home paths.
 
-Ein Konto bei Bedarf vorher über Windows einrichten, zum Beispiel:
+If needed, create the account through Windows first, for example:
 
 ```powershell
-$Password = Read-Host 'Kennwort für das neue Windows-Konto' -AsSecureString
+$Password = Read-Host 'Password for the new Windows account' -AsSecureString
 New-LocalUser -Name sshuser -Password $Password
 Remove-Variable Password
 ```
 
-Keine Administratorgruppe hinzufügen. Das Kennwort wird für die vorgesehene
-SSH-Schlüsselanmeldung nicht verwendet; Passwortanmeldung bleibt abgeschaltet.
+Do not add it to an administrator group. The password is not used for the
+intended SSH key authentication; password authentication remains disabled.
 
-## Helfer ausführen
+## Run the helper
 
-In einer erhöhten PowerShell im Installationsordner:
+In elevated PowerShell, inside the installation directory:
 
 ```powershell
 .\install-user.cmd sshuser 'C:\Keys\sshuser.pub' -Start
 ```
 
-Bei einem anderen Dienstnamen `-ServiceName <Name>` ergänzen. Die Registrierung
-muss zu diesem Installationsordner gehören und als LocalSystem laufen.
-Eine laufende Instanz wird für die Einrichtung gestoppt; deshalb eine Konsole
-nutzen, die nicht vom Fortbestand dieses SSH-Dienstes abhängt.
+For another service name, add `-ServiceName <name>`. Its registration must
+belong to this installation directory and run as LocalSystem. A running
+instance is stopped during setup, so use a console that does not depend on
+this SSH service staying available.
 
-| Option | Verhalten nach erfolgreicher Einrichtung |
+| Option | Behavior after successful setup |
 | --- | --- |
-| ohne Startoption | Einen vorher laufenden Dienst wieder starten; einen gestoppten gestoppt lassen |
-| `-Start` | Dienst immer starten, auch nach einem früheren Fehlversuch |
-| `-NoRestart` | Dienst gestoppt lassen |
+| no start option | Restart a previously running service; leave a stopped service stopped |
+| `-Start` | Always start the service, including after an earlier failed attempt |
+| `-NoRestart` | Leave the service stopped |
 
-`-Start` und `-NoRestart` dürfen nicht kombiniert werden. Die Abschlussmeldung
-zeigt ausdrücklich RUNNING oder STOPPED; bei STOPPED kann anschließend
-`Start-Service openssh-cygwin` ausgeführt werden.
+`-Start` and `-NoRestart` cannot be combined. The final message explicitly
+shows RUNNING or STOPPED. After STOPPED, you can run
+`Start-Service openssh-cygwin` separately.
 
-## Änderungen und Rückkehr bei Fehlern
+## Changes and error recovery
 
-Der Helfer prüft Windows-SID, Cygwin-Kontodaten, Home und Gruppen. Er validiert
-den öffentlichen Schlüssel mit ssh-keygen. Nur Home, .ssh und authorized_keys
-werden angelegt, per icacls der Benutzer-SID zugeordnet und auf 700/700/600 gesetzt.
-Für spätere zusätzliche Schlüssel kann der Benutzer seine eigene authorized_keys bearbeiten.
+The helper checks the Windows SID, Cygwin account record, home and groups.
+It validates the public key with ssh-keygen. Only the home, .ssh and
+authorized_keys are created, assigned to the user's SID with icacls and set
+to 700/700/600. Users can edit their own authorized_keys to add keys later.
 
-Eine vorhandene globale AllowUsers-Liste wird ohne identischen Doppeleintrag
-ergänzt. Fehlt sie, wird keine neue Liste erzeugt. Match bleibt unverändert;
-globale Includes und zitierte/escapte AllowUsers-Muster brauchen manuelle Prüfung.
-DenyUsers, DenyGroups, AllowGroups und andere Regeln bleiben wirksam.
+An existing global AllowUsers list is extended without an identical duplicate.
+If none exists, no new list is created. Match blocks remain untouched;
+global Includes and quoted/escaped AllowUsers patterns require manual review.
+DenyUsers, DenyGroups, AllowGroups and other rules remain effective.
 
-Die SYSTEM-Konfiguration wird per Robocopy /B /COPY:DAT in einen geschützten
-Ordner `var\backups\user-<UTC>-<ID>` gesichert. Besitzer und ACL beim
-Zurückschreiben müssen gleich bleiben. Vor dem Anlegen des Homes wird mit
-explizitem Cygwin-PATH `sshd -t` ausgeführt. Für manuelle Konfigurationsänderungen
-den Ablauf in INSTALLATION.md nutzen; direkter Administratorzugriff kann scheitern.
+The SYSTEM-owned configuration is backed up with Robocopy /B /COPY:DAT to
+a protected `var\backups\user-<UTC>-<ID>` directory. Its owner and ACL must
+remain unchanged when copied back. Before creating the home, the helper runs
+`sshd -t` with an explicit Cygwin PATH. For manual configuration edits, follow
+INSTALLATION.md; direct access by an administrator may fail.
 
-Bei Fehlern nach Beginn der Änderungen stoppt der Helfer den Dienst und versucht
-die ursprüngliche Konfiguration zurückzuspielen. Er startet dann nicht automatisch.
-Ein eventuell angelegtes Home bleibt zur Prüfung erhalten. Backup, Konfiguration,
-Besitzer und Modi prüfen, bevor der Dienst wieder gestartet wird. Eine verwaiste
-`var\run\install-user.lock` erst entfernen, wenn keine Einrichtung mehr läuft.
+If an error occurs after changes begin, the helper stops the service and tries
+to restore the original configuration. It does not start the service afterwards.
+Any newly created home is retained for inspection. Review the backup,
+configuration, ownership and permissions before restarting. Remove a stale
+`var\run\install-user.lock` only when no setup process is still running.
 
-## Eingeschränkte Anmeldung prüfen
+## Check restricted access
 
-Hostschlüssel vorab vertrauenswürdig übernehmen, dann vom Client beispielsweise:
+Verify host keys through a trusted channel first, then connect from a client:
 
 ```bash
 ssh -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes -i ~/.ssh/userkey -p 2222 sshuser@server.example 'id; printf "HOME=%s\n" "$HOME"'
-scp -P 2222 -i ~/.ssh/userkey datei sshuser@server.example:datei
+scp -P 2222 -i ~/.ssh/userkey file sshuser@server.example:file
 ```
 
-Erwartet: /home/sshuser, keine Administrators-Gruppe, Medium Mandatory Level,
-Admin=False bei PowerShell-Tokenprüfung. Schreibzugriff auf Windows-System-
-verzeichnisse, Lesen privater Hostschlüssel/sshd_config und Dienststeuerung sollen
-verweigert werden. TTY, Exitcodes und Dateitransfers mit Hashvergleich prüfen;
-Passwortanmeldung muss abgewiesen bleiben.
+Expected: /home/sshuser, no Administrators group, Medium Mandatory Level and
+Admin=False when checking the PowerShell token. Writing to Windows system
+directories, reading private host keys/sshd_config and controlling the service
+should be denied. Check TTY, exit codes and file transfers with hash comparison;
+password authentication must still be rejected.
 
-## Konto entfernen
+## Remove an account
 
-In einem administrativen Wartungsfenster die genaue SID vor Löschung/Neustart
-festhalten, Konto deaktivieren und eigenen Dienst stoppen:
+During an administrative maintenance window, record the exact SID before
+deletion/reboot, disable the account and stop your service:
 
 ```powershell
 $Name = 'sshuser'
@@ -106,22 +105,23 @@ Disable-LocalUser -Name $Name
 Stop-Service openssh-cygwin
 ```
 
-Sitzungen des Kontos beenden. Schlüssel entfernen und eine AllowUsers-Liste über
-den Backupmodus gezielt anpassen. Keine alte Gesamtkonfiguration über spätere
-Änderungen kopieren. Beim Entfernen des letzten AllowUsers-Eintrags nicht
-versehentlich die gesamte Einschränkung aufheben.
+End the account's sessions. Remove its keys and update any AllowUsers list
+through backup mode. Do not overwrite later changes with an old complete
+configuration. Removing the last AllowUsers entry must not accidentally
+remove the entire restriction.
 
-Nur nach Prüfung des exakten eigenen Homepfads und ohne Reparsepoints darin:
+Only after verifying the exact home path you control and ensuring it contains
+no reparse points:
 
 ```powershell
 icacls.exe $UserHome /setowner '*S-1-5-32-544' /t /c
-if ($LASTEXITCODE -ne 0) { throw 'Besitzerwechsel fehlgeschlagen' }
+if ($LASTEXITCODE -ne 0) { throw 'Ownership change failed' }
 icacls.exe $UserHome /grant '*S-1-5-32-544:(OI)(CI)F' /t /c
-if ($LASTEXITCODE -ne 0) { throw 'Rechteänderung fehlgeschlagen' }
+if ($LASTEXITCODE -ne 0) { throw 'Permission change failed' }
 Remove-Item -LiteralPath $UserHome -Recurse -Force
 Remove-LocalUser -Name $Name
 ```
 
-Syntax mit dem in INSTALLATION.md gezeigten PATH-Präfix prüfen und Dienst
-gezielt starten. Windows-Profile können geladen bleiben; vor Profilentfernung
-die Hinweise in TROUBLESHOOTING.md beachten. Kein erzwungenes Hive-Entladen.
+Check configuration syntax with the PATH prefix in INSTALLATION.md, then start
+the selected service. Windows profiles may remain loaded; follow
+TROUBLESHOOTING.md before removing profiles. Do not force hive unloading.

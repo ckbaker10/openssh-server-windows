@@ -1,51 +1,53 @@
-# Repository-Anweisungen
+# Repository instructions
 
-## Build und Paket
+## Build and packaging
 
-Linux-Cross-Build ausschließlich mit rootless Podman, ohne Microsoft-SDK.
-Build- und Prüfbefehle stehen in COMPILE.md. Eingaben in build/inputs.lock.json
-prüfen; Versionswechsel in allen Skripten, Image-Tags, Tests und Dokumenten
-zusammenhängend durchführen. Keine Signatur- oder Hashprüfungen abschalten.
-Erzeugte Artefakte und Diagnose-Rohdaten nur in den ignorierten Verzeichnissen
-dist/ und work/ ablegen. Fremde Änderungen erhalten, eigene Dateien gezielt stagen.
+Cross-build on Linux using rootless Podman only, without the Microsoft SDK.
+Build and validation commands are in COMPILE.md. Verify build/inputs.lock.json;
+update versions consistently across scripts, image tags, tests and documentation.
+Never disable signature or hash checks. Store generated artifacts and raw
+diagnostic data only in the ignored dist/ and work/ directories. Preserve
+others' changes and stage only your own files explicitly.
 
-ZIPs ohne Man-/Info-Handbuchseiten, mit Windows-kompatiblen Dateinamen,
-vollständigem Manifest, SHA256SUMS und Prüfer ausliefern. Lizenzhinweise,
-Installations-, Benutzer- und Fehlerhilfe erhalten. Keine privaten Schlüssel,
-Kennwörter oder Umgebungskonfigurationen paketieren.
+Ship ZIPs without Man or Info pages, with Windows-compatible file names,
+a complete manifest, SHA256SUMS and verifier. Retain license notices and the
+installation, user and troubleshooting guides. Never package private keys,
+passwords or private environment configuration.
 
 ## Installation
 
-Nur LocalSystem-Dienste unterstützen; wirkungslose Konto-/Passwortoptionen
-ohne Geheimnisausgabe abweisen. Defaultvorlagen erhalten; --yes darf bestehende
-Konfigurationen nicht löschen. Explizite Ports einschließlich 22 prüfen.
-SYSTEM-ACL als Gruppe g:18 setzen; sichtbare nicht fatale Warnung erhalten.
-Bereits korrekte Besitzer anhand UID nicht erneut ändern. Keine pauschalen
-NTFS-Rechteänderungen am Installationsstamm.
+Support LocalSystem services only; reject unsupported account/password options
+without exposing secrets. Keep default templates; --yes must not delete existing
+configuration. Test explicit ports including 22. Set the SYSTEM ACL as group
+g:18 and retain a visible, nonfatal warning on failure. Skip ownership changes
+when the UID is already correct. Do not change NTFS permissions across the
+installation root.
 
-Jeder Bash-Aufruf ohne Profile braucht einen expliziten Cygwin-PATH, entweder
-im Skript oder vor dem Kommando. Native Exitcodes anhand des global aktualisierten
-LASTEXITCODE prüfen. Konfiguration mit Robocopy /B /COPY:DAT unter Erhalt von
-Besitzer/ACL bearbeiten, Sicherung/Übernahme mit /B /COPYALL beschreiben.
+Every Bash invocation without profiles needs an explicit Cygwin PATH, either
+inside the script or before the command. Check native exit codes using the
+globally updated LASTEXITCODE. Edit configuration with Robocopy /B /COPY:DAT
+while preserving ownership/ACLs; document /B /COPYALL for backup and migration.
 
-install-user.cmd unterstützt vorhandene aktivierte lokale Nicht-Administratoren
-mit neuem /home/NAME. Bestehende Homes nicht überschreiben; keine Konten,
-Kennwörter oder Gruppen ändern. SID, Gruppen, Schlüssel, 700/700/600 und globale
-AllowUsers prüfen. Match nicht ändern, Include und komplexe Muster manuell prüfen.
-Nur eigenen Dienst steuern. Bei Mutationsfehlern Konfiguration zurückspielen,
-Dienst gestoppt lassen. -Start und -NoRestart sind gegenseitig ausgeschlossen.
+install-user.cmd supports existing, enabled local non-administrator accounts
+with a new /home/NAME. Do not overwrite existing homes or change accounts,
+passwords or groups. Check SID, groups, keys, 700/700/600 and global AllowUsers.
+Do not change Match blocks; require manual review for Include and complex patterns.
+Control only this installation's service. Restore configuration after a failed
+mutation and leave the service stopped. -Start and -NoRestart are mutually exclusive.
 
-## Prüfungen und Veröffentlichung
+## Validation and releases
 
-Geänderte Shellskripte vor jedem Commit mit shellcheck -S warning prüfen.
-Paket-/DLL-/Versionsnachweise, Regressionen, PowerShell und Wine vor Release
-ausführen. Windows-Mocks und Wine nicht als native Windows-Abnahme ausgeben.
-Grenzen neuer Skriptpfade benennen; bis zur vollständigen Abnahme Prereleases.
-Geprüfte eigene Änderungen committen und pushen. Neue Release-Tags und Assets
-verwenden; bestehende veröffentlichte Tags/Assets nicht ersetzen.
+Run shellcheck -S warning on changed shell scripts before every commit.
+Run package, DLL, version, regression, PowerShell and Wine checks before release.
+Do not describe Windows mocks or Wine as native Windows validation. State the
+limits of new script paths; publish prereleases until validation is complete.
+Commit and push your verified changes. Use new release tags and assets;
+never replace published tags or assets. Existing release titles and descriptions
+may be translated when requested, while preserving flags, tags and asset hashes.
 
-Öffentliche Dokumentation portabel halten: keine privaten Hostnamen, absoluten
-Workspace-Pfade, Betriebsberichte, Automatisierungspläne oder Testumgebungen.
-README kurz mit Zweck und beiden Installationswegen; Builddetails in COMPILE.md.
-Bekannte Runtime-Grenzen allgemein in docs/troubleshooting.md dokumentieren.
-Keine ungeprüften Profil-/Hive-/PATH-Eingriffe oder Eingriffe auf fremden Systemen.
+Keep all public documentation and release descriptions in English and portable:
+no private hostnames, absolute workspace paths, operations reports, automation
+plans or test environments. Keep README short, with the purpose and both setup
+paths; put build details in COMPILE.md. Describe general runtime limitations in
+docs/troubleshooting.md. Do not make unverified profile, hive or global PATH
+changes, or modify other people's systems.

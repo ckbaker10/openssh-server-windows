@@ -1,62 +1,62 @@
-# Installation und Betrieb unter Windows
+# Installation and operation on Windows
 
-Voraussetzungen: Windows x86_64, Windows PowerShell 5.1 und erhöhte
-Administratorrechte für die Einrichtung. Das Paket bringt Cygwin und Bash mit;
-das optionale Windows-OpenSSH-Feature und ein Microsoft-SDK sind nicht nötig.
-Der Dienst läuft als LocalSystem, Anmeldungen verwenden das jeweilige Windows-Konto.
+Requirements: Windows x86_64, Windows PowerShell 5.1 and elevated administrator
+rights for setup. The package includes Cygwin and Bash; neither the optional
+Windows OpenSSH feature nor the Microsoft SDK is required. The service runs
+as LocalSystem; logins use the permissions of the respective Windows account.
 
-## Entpacken und prüfen
+## Extract and verify
 
-ZIP und SHA256SUMS aus demselben Release laden. Den Hash vergleichen:
+Download the ZIP and SHA256SUMS from the same release. Compare the hash:
 
 ```powershell
 Get-FileHash .\openssh-10.6p1-cygwin-x86_64.zip -Algorithm SHA256
 ```
 
-Nach `C:\Program Files\OpenSSH-Cygwin` entpacken und gegebenenfalls den äußeren
-ZIP-Ordner umbenennen. `install-server.cmd` und `bin\cygwin1.dll` müssen direkt
-darunter liegen. Nur Administratoren und SYSTEM dürfen diesen Baum verändern.
-Anschließend in PowerShell prüfen:
+Extract to `C:\Program Files\OpenSSH-Cygwin`, renaming the outer ZIP directory
+if needed. `install-server.cmd` and `bin\cygwin1.dll` must be directly beneath
+that directory. Only Administrators and SYSTEM should be able to modify this
+installation tree. Then verify it in PowerShell:
 
 ```powershell
 Set-Location 'C:\Program Files\OpenSSH-Cygwin'
 powershell.exe -NoProfile -File .\verify-package.ps1
 ```
 
-Bei Bedarf `-Path 'C:\Program Files\OpenSSH-Cygwin'` ausdrücklich angeben.
-Der Prüfer liest SHA256SUMS ohne JSON. Eine leere Liste, fehlende oder geänderte
-Nutzdateien führen zum Fehler. Die Nutzdateiliste schließt sich selbst und das
-Manifest aus; das Manifest erfasst zusätzlich die Liste. Der ZIP-Hash umfasst alles.
-Nach der Einrichtung ändern sich Konfigurationen; nur unveränderte Pakete vergleichen.
+Specify `-Path 'C:\Program Files\OpenSSH-Cygwin'` explicitly if needed.
+The verifier reads SHA256SUMS without JSON. An empty list, missing files or
+modified payload files cause failure. The payload list excludes itself and
+the manifest; the manifest also covers the list. The ZIP hash covers everything.
+Configuration changes during setup, so compare only unmodified packages.
 
-## Dienst einrichten
+## Set up the service
 
-In einer erhöhten 64-Bit-PowerShell im Installationsordner:
+In elevated 64-bit PowerShell, inside the installation directory:
 
 ```powershell
 .\install-server.cmd --yes --name openssh-cygwin --port 2222
 ```
 
-`--user`, `--pwd` und `--privileged` werden abgewiesen. Es wird kein zusätzliches
-Dienstkonto angelegt. Ohne `--port` bleibt ein bestehender Port erhalten; bei
-einer neuen Konfiguration ist es 22. `--port 22` setzt auch ausdrücklich zurück.
-`--yes` erhält vorhandene sshd_config, ssh_config und nsswitch.conf; die Dateien
-werden unter `etc\backups\<UTC>-<ID>` gesichert. Fehlende Dateien kommen aus
-`etc\defaults\etc`. Eine ausdrückliche Portangabe ändert die Serverkonfiguration.
+`--user`, `--pwd` and `--privileged` are rejected. No additional service account
+is created. Without `--port`, an existing port is preserved; new configurations
+use 22. `--port 22` explicitly changes the port back to 22.
+`--yes` preserves existing sshd_config, ssh_config and nsswitch.conf, backing
+them up under `etc\backups\<UTC>-<ID>`. Missing files are copied from
+`etc\defaults\etc`. An explicit port option changes the server configuration.
 
-Einen laufenden Dienst gleichen Namens vorher stoppen. Eine bereits vorhandene
-Registrierung behält Programmpfad und Argumente; beim Umzug den Updateablauf nutzen.
+Stop a running service with the same name first. An existing registration keeps
+its executable path and arguments; use the update procedure when moving it.
 
-## Schlüssel für Administrator einrichten
+## Set up an administrator's key
 
-Als Zielbenutzer die mitgelieferte Shell öffnen:
+Open the bundled shell as the target user:
 
 ```powershell
 .\open-shell.cmd
 ```
 
-Sie setzt HOME anhand der Cygwin-Kontodaten. `etc\nsswitch.conf` legt `/home/%U`
-und Bash fest. Vorhandene `/etc/passwd`-Einträge haben Vorrang. In Bash:
+It sets HOME from the Cygwin account database. `etc\nsswitch.conf` specifies
+`/home/%U` and Bash. Existing `/etc/passwd` entries take precedence. In Bash:
 
 ```bash
 id
@@ -65,60 +65,60 @@ printf '%s\n' "$HOME"
 mkdir -p "$HOME/.ssh"
 chmod 700 "$HOME" "$HOME/.ssh"
 cat >> "$HOME/.ssh/authorized_keys" <<'KEY'
-ssh-ed25519 AAAA...hier_den_eigenen_oeffentlichen_Schluessel_einsetzen
+ssh-ed25519 AAAA...replace_with_your_own_public_key
 KEY
 chmod 600 "$HOME/.ssh/authorized_keys"
 exit
 ```
 
-Nur einen echten öffentlichen Schlüssel einsetzen, keinen privaten Schlüssel.
-Für eingeschränkte Konten den separaten Helfer gemäß NONADMIN-USERS.md verwenden.
+Insert a real public key, never a private key. For restricted accounts, use
+the separate helper described in NONADMIN-USERS.md.
 
-Wenn Dateien zuvor mit PowerShell angelegt wurden, kann die Besitzergruppe
-Administrators Cygwin-chmod verhindern. Den Besitzer nur auf dem betroffenen
-Benutzer-Home korrigieren und die Modi in Bash erneut setzen:
+Files previously created with PowerShell may be owned by the Administrators
+group, preventing Cygwin chmod. Correct ownership only on the affected user's
+home directory, then set the permissions again in Bash:
 
 ```powershell
 $Account = [Security.Principal.WindowsIdentity]::GetCurrent().Name
 $UserHome = 'C:\Program Files\OpenSSH-Cygwin\home\Administrator'
 icacls.exe $UserHome /setowner $Account /t /c
-if ($LASTEXITCODE -ne 0) { throw 'Besitzerwechsel fehlgeschlagen' }
+if ($LASTEXITCODE -ne 0) { throw 'Ownership change failed' }
 ```
 
-Das Beispiel gilt für das eigene Konto; für ein anderes Konto dessen Namen
-verwenden. Niemals den ganzen Installationsbaum auf einen normalen Benutzer übertragen.
-StrictModes eingeschaltet lassen.
+This example applies to your own account; specify the target account name
+when preparing another user's home. Never assign the whole installation tree
+to a regular user. Keep StrictModes enabled.
 
-## Prüfen, starten und verbinden
+## Check, start and connect
 
-Jeder Bash-Aufruf ohne Profile benötigt den Cygwin-PATH. Aus PowerShell mit
-einfachen Anführungszeichen übergeben, damit `$PATH` in Bash ausgewertet wird:
+Every Bash invocation without profiles needs the Cygwin PATH. Use single quotes
+in PowerShell so that Bash expands `$PATH`:
 
 ```powershell
 .\bin\bash.exe --noprofile --norc -c 'export PATH=/usr/bin:/bin:/usr/sbin:$PATH; /usr/sbin/sshd -t'
-if ($LASTEXITCODE -ne 0) { throw 'Konfigurationsprüfung fehlgeschlagen' }
+if ($LASTEXITCODE -ne 0) { throw 'Configuration check failed' }
 Start-Service openssh-cygwin
 .\bin\cygrunsrv.exe -VQ openssh-cygwin
 Get-Content .\var\log\sshd.log -Tail 10
 ```
 
-Firewall gezielt für den gewählten TCP-Port und gewünschte Quellen freigeben.
-Hostschlüssel über einen vertrauenswürdigen Weg prüfen und beim Client speichern.
-Danach beispielsweise `ssh -o StrictHostKeyChecking=yes -p 2222 Administrator@server.example`.
-Schlüsselanmeldung, Passwortablehnung, TTY, Exitcodes und SFTP mit Hashvergleich prüfen.
+Allow the chosen TCP port through the firewall for the required sources.
+Verify host keys through a trusted channel and save them on the client.
+Then connect, for example, with
+`ssh -o StrictHostKeyChecking=yes -p 2222 Administrator@server.example`.
+Check key authentication, password rejection, TTY, exit codes and SFTP with hash comparison.
 
-Die Standardkonfiguration deaktiviert Passwort, Keyboard-Interactive und X11.
-SFTP läuft intern; Shell und Befehle verwenden Cygwin-Bash. Win32-OpenSSH-
-Registry-Einstellungen zur Default-Shell gelten hier nicht. Bash-Skripte müssen
-LF-Zeilenenden besitzen. Eigene CRLF-Skripte bei Bedarf mit
-`sed -i 's/\r$//' datei.sh` konvertieren.
+The default configuration disables passwords, keyboard-interactive authentication
+and X11. SFTP runs internally; shells and commands use Cygwin Bash. Win32 OpenSSH
+registry settings for the default shell do not apply here. Bash scripts need LF
+line endings. Convert your own CRLF scripts with `sed -i 's/\r$//' file.sh` if needed.
 
-## SYSTEM-Konfiguration bearbeiten
+## Edit SYSTEM-owned configuration
 
-Nach Einrichtung kann sshd_config auch für Administratoren direkt unlesbar
-sein. Änderungen, etwa LogLevel oder AllowUsers, über eine geschützte Kopie
-mit Robocopy /B /COPY:DAT vornehmen. Der Besitzer und die ACL des Originals
-bleiben erhalten. In einer erhöhten PowerShell:
+After setup, sshd_config may be unreadable even to administrators. For changes
+such as LogLevel or AllowUsers, use a protected copy made with
+Robocopy /B /COPY:DAT. Preserve the original file's owner and ACL.
+In elevated PowerShell:
 
 ```powershell
 $Root = 'C:\Program Files\OpenSSH-Cygwin'
@@ -127,36 +127,36 @@ $Original = Join-Path $Edit 'original'
 $Changed = Join-Path $Edit 'changed'
 New-Item -ItemType Directory -Path $Original,$Changed -Force | Out-Null
 icacls.exe $Edit /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F'
-if ($LASTEXITCODE -ne 0) { throw 'Backupordner konnte nicht geschützt werden' }
+if ($LASTEXITCODE -ne 0) { throw 'Could not protect the backup directory' }
 robocopy "$Root\etc" $Original sshd_config /B /COPY:DAT /R:0 /W:0
-if ($LASTEXITCODE -ge 8) { throw 'Sicherung fehlgeschlagen' }
+if ($LASTEXITCODE -ge 8) { throw 'Backup failed' }
 Copy-Item "$Original\sshd_config" "$Changed\sshd_config"
 $Before = (Get-Acl -LiteralPath "$Root\etc\sshd_config").Sddl
 Start-Process notepad.exe -ArgumentList ('"' + "$Changed\sshd_config" + '"') -Wait
 $Text = [IO.File]::ReadAllText("$Changed\sshd_config").Replace("`r`n","`n")
 [IO.File]::WriteAllText("$Changed\sshd_config", $Text, (New-Object Text.UTF8Encoding($false)))
 robocopy $Changed "$Root\etc" sshd_config /B /COPY:DAT /IS /IT /R:0 /W:0
-if ($LASTEXITCODE -ge 8) { throw 'Zurückkopieren fehlgeschlagen; Sicherung behalten' }
-if ((Get-Acl -LiteralPath "$Root\etc\sshd_config").Sddl -ne $Before) { throw 'Besitzer/ACL verändert' }
+if ($LASTEXITCODE -ge 8) { throw 'Copy back failed; retain the backup' }
+if ((Get-Acl -LiteralPath "$Root\etc\sshd_config").Sddl -ne $Before) { throw 'Owner or ACL changed' }
 & "$Root\bin\bash.exe" --noprofile --norc -c 'export PATH=/usr/bin:/bin:/usr/sbin:$PATH; /usr/sbin/sshd -t'
 if ($LASTEXITCODE -ne 0) {
     robocopy $Original "$Root\etc" sshd_config /B /COPY:DAT /IS /IT /R:0 /W:0
-    if ($LASTEXITCODE -ge 8) { throw 'Wiederherstellung fehlgeschlagen; Dienst nicht starten' }
-    throw 'Syntaxfehler; ursprüngliche Konfiguration wiederhergestellt'
+    if ($LASTEXITCODE -ge 8) { throw 'Restore failed; do not start the service' }
+    throw 'Syntax error; original configuration restored'
 }
 Restart-Service openssh-cygwin
 ```
 
-Backupmodus benötigt erhöhte Rechte und verfügbare Sicherungs-/Wiederherstellungs-
-privilegien. Die Sicherung bis zur Funktionsprüfung behalten. Eine alte Gesamt-
-konfiguration später nicht über zwischenzeitliche Änderungen kopieren.
+Backup mode needs elevated rights and available backup/restore privileges.
+Keep the backup until functionality has been checked. Do not overwrite later
+changes by restoring an old complete configuration.
 
-## Logs und Rotation
+## Logs and rotation
 
-Neue Registrierungen starten sshd mit `-D -E /var/log/sshd.log`; die Datei liegt
-unter `var\log\sshd.log`. Standard ist LogLevel INFO. Für VERBOSE den obigen
-Konfigurationsablauf verwenden. Zur manuellen Rotation in erhöhter PowerShell
-im Installationsordner:
+New registrations start sshd with `-D -E /var/log/sshd.log`; the file is
+`var\log\sshd.log` in the installation tree. The default LogLevel is INFO.
+Use the configuration procedure above to enable VERBOSE. For manual rotation,
+run elevated PowerShell inside the installation directory:
 
 ```powershell
 $Log = Join-Path (Get-Location) 'var\log\sshd.log'
@@ -168,51 +168,52 @@ try {
 } finally { Start-Service openssh-cygwin }
 ```
 
-Neue Logdatei und Rechte anschließend prüfen. Für automatische Rotation einen
-administrativen Wartungsjob mit Fehlerkontrolle und eigener Aufbewahrungsfrist einrichten.
+Check the new log file and permissions afterwards. For automatic rotation,
+create an administrative maintenance job with error handling and a retention policy.
 
-## Aktualisieren
+## Update
 
-1. Neues ZIP prüfen und in einen neuen, nur administrativ beschreibbaren Ordner
-   entpacken. Alten Baum behalten. Dienstregistrierung mit dem alten
-   `bin\cygrunsrv.exe -VQ openssh-cygwin` sichern.
-2. Eigenen Dienst stoppen. etc, home, Logs und eigene Daten auf ein NTFS-Ziel
-   sichern: `robocopy <Quelle> <Ziel> /E /B /COPYALL /DCOPY:DAT /R:1 /W:1`.
-   Exitcodes ab 8 sind Fehler. Backup nur Administratoren/SYSTEM zugänglich machen.
-3. Aktive Konfigurationen, sämtliche privaten/öffentlichen Hostschlüssel und Homes
-   mit denselben /B-/COPYALL-Optionen in den neuen Baum übernehmen. Konfigurationen
-   nicht durch Vorlagen ersetzen. NSS-Homepfad und neue Vorlagen separat vergleichen.
-   Anzahl, Hashes, Besitzer und Rechte der Hostschlüssel prüfen, keine Inhalte ausgeben.
-4. Den gestoppten Dienst mit dem **alten** `bin\cygrunsrv.exe -R openssh-cygwin`
-   entfernen. Im neuen Ordner `.\install-server.cmd --yes --name openssh-cygwin`
-   ausführen. Nur bei gewünschter Änderung `--port` ergänzen.
-5. Mit dem oben gezeigten PATH-Präfix `sshd -t` prüfen. Dienst starten, neue
-   Registrierung und Logdatei sowie unveränderte Hostschlüssel-Fingerprints,
-   Anmeldung, Exitcodes und SFTP prüfen. Alten Baum erst nach Abnahme löschen.
+1. Verify the new ZIP and extract it to a new directory writable only by
+   administrators. Keep the old tree. Save the service registration using
+   the old `bin\cygrunsrv.exe -VQ openssh-cygwin`.
+2. Stop your service. Back up etc, home, logs and your own data to an NTFS
+   destination: `robocopy <source> <destination> /E /B /COPYALL /DCOPY:DAT /R:1 /W:1`.
+   Exit codes of 8 or higher indicate failure. Restrict the backup to Administrators/SYSTEM.
+3. Transfer active configurations, all private/public host keys and homes to
+   the new tree with the same /B and /COPYALL options. Do not replace active
+   configurations with templates. Compare the NSS home setting and new templates
+   separately. Check host key counts, hashes, owners and permissions without
+   displaying private contents.
+4. Remove the stopped service using the **old** `bin\cygrunsrv.exe -R openssh-cygwin`.
+   In the new directory, run `.\install-server.cmd --yes --name openssh-cygwin`.
+   Add `--port` only when changing the port.
+5. Check `sshd -t` with the PATH prefix shown above. Start the service and check
+   its new registration, log file, unchanged host key fingerprints, login,
+   exit codes and SFTP. Delete the old tree only after validation.
 
-`/B` ermöglicht das Kopieren nur SYSTEM lesbarer privater Hostschlüssel.
-Bei fehlenden Sicherungsrechten oder Kopierfehlern nicht mit unvollständigen
-Daten fortfahren. Für eine Rückkehr den neuen Dienst stoppen/entfernen und den
-alten Baum mit gesicherten Daten/Rechten und seiner Dienstregistrierung wieder einrichten.
+`/B` allows private host keys readable only by SYSTEM to be copied. Do not
+continue with incomplete data when backup rights are missing or copying fails.
+To roll back, stop/remove the new service, restore the old tree with its saved
+data and permissions, and recreate its service registration.
 
-## NTFS-Rechte und Entfernen
+## NTFS permissions and removal
 
-Cygwin bildet POSIX-Rechte auf NTFS-ACLs ab; NULL-SID-Deny- und None-Einträge
-können dabei vorkommen. Kein blindes rekursives icacls /reset verwenden.
-Vor Reparaturen DACLs mit icacls /save sichern; Besitzer werden damit nicht gesichert.
-Nur betroffene eigene Pfade gezielt reparieren, Hostschlüssel und StrictModes erhalten.
+Cygwin maps POSIX permissions to NTFS ACLs; NULL SID deny entries and None
+group entries can be part of that mapping. Do not run a blanket recursive
+icacls /reset. Save DACLs with icacls /save before repairs; it does not save
+owners. Repair only affected paths you control, preserving host keys and StrictModes.
 
-Zum Entfernen als Administrator im Installationsordner:
+To remove the service, run as Administrator inside the installation directory:
 
 ```powershell
 .\bin\cygrunsrv.exe -E openssh-cygwin
 .\bin\cygrunsrv.exe -R openssh-cygwin
 ```
 
-Fehlercodes prüfen; erst nach erfolgreicher Dienstentfernung den eigenen Baum
-und die dafür angelegte Firewallregel löschen. Benutzerprofile und Laufzeit-
-grenzen sind in TROUBLESHOOTING.md beschrieben.
+Check exit codes. Delete the installation tree and its firewall rule only after
+successful service removal. User profiles and runtime limitations are covered
+in TROUBLESHOOTING.md.
 
-Grundlagen: [Cygwin-Rechte](https://cygwin.com/cygwin-ug-net/ntsec.html),
+References: [Cygwin permissions](https://cygwin.com/cygwin-ug-net/ntsec.html),
 [icacls](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/icacls),
 [Robocopy](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy).
