@@ -71,3 +71,16 @@ Der Wine-Test setzt die vorherige ZIP-Prüfung voraus und ersetzt keine Windows-
 Details und Nachweise stehen im [Buildbericht](docs/build-validation.md).
 Die ursprüngliche [Machbarkeitsrecherche](docs/openssh-windows-recherche-2026-10-19.md)
 beschreibt die Auswahl von OpenSSH mit Cygwin.
+
+## Wöchentliche Pflege und Releases
+
+Die vorhandenen Prompt-Patrol-Wochen-Worker übernehmen die Updateprüfung über den
+offenen Dauerplan unter
+`ai-repo-plans/openssh-server-windows/002-dauerplan-wochenpflege-github-releases.md`
+im lokalen Workspace. Der Plan umfasst OpenSSH, Cygwin, OpenSSL und die
+ausgelieferten Laufzeitpakete sowie Build, Tests und die eigenständige
+Veröffentlichung neuer GitHub-Releases. Ein neuer Zeitgeber wird dafür nicht angelegt.
+
+[Repository-Anweisungen](AGENTS.md) halten die dauerhafte Veröffentlichungsfreigabe
+und den Einstieg für neue Worker-Sitzungen fest. Ohne native Windows-Abnahme
+werden geprüfte Updates weiterhin als Prerelease veröffentlicht.
