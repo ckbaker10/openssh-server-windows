@@ -173,12 +173,21 @@ def main():
         if directory.exists():
             shutil.rmtree(directory)
     skipped = materialize_links(output)
-    for name in ['sshd_config', 'install-server.sh', 'install-server.cmd']:
-        dest = output / ('etc/sshd_config' if name == 'sshd_config' else name)
+    for name in ['sshd_config', 'nsswitch.conf', 'install-server.sh', 'install-server.cmd',
+                 'open-shell.sh', 'open-shell.cmd', 'verify-package.ps1']:
+        dest = output / ('etc/' + name if name in ['sshd_config', 'nsswitch.conf'] else name)
         shutil.copy2(ROOT / 'packaging' / name, dest)
+    defaults = output / 'etc/defaults/etc'
+    defaults.mkdir(parents=True, exist_ok=True)
+    for name in ['sshd_config', 'ssh_config', 'nsswitch.conf']:
+        shutil.copy2(output / 'etc' / name, defaults / name)
+    subprocess.run(['patch', '--batch', '--forward', '--fuzz=0', '--no-backup-if-mismatch',
+                    '-p1', '-d', str(output), '-i',
+                    str(ROOT / 'patches/cygwin-host-config.patch')], check=True)
     # Batch files need CRLF when extracted by ordinary Windows ZIP tools.
-    batch = output / 'install-server.cmd'
-    batch.write_bytes(batch.read_bytes().replace(b'\r\n', b'\n').replace(b'\n', b'\r\n'))
+    for name in ['install-server.cmd', 'open-shell.cmd']:
+        batch = output / name
+        batch.write_bytes(batch.read_bytes().replace(b'\r\n', b'\n').replace(b'\n', b'\r\n'))
     for directory in ['var/empty', 'var/log', 'var/run', 'home', 'tmp']:
         (output / directory).mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / 'docs' / 'windows-installation.md', output / 'INSTALLATION.md')
@@ -186,6 +195,11 @@ def main():
     duplicates = deduplicate_windows_files(output)
     validate_windows_paths(str(p.relative_to(output)) for p in output.rglob('*'))
     reports = verify_pe(output)
+    payload_hashes = {str(p.relative_to(output)): sha256(p)
+                      for p in sorted(output.rglob('*')) if p.is_file()}
+    (output / 'SHA256SUMS').write_text(''.join(
+        f'{digest}  {name}\n' for name, digest in payload_hashes.items()), encoding='utf-8')
+    payload_hashes['SHA256SUMS'] = sha256(output / 'SHA256SUMS')
     lock = json.loads((ROOT / 'build' / 'inputs.lock.json').read_text())
     manifest = {
         'openssh': lock['openssh'], 'cygwin': lock['cygwin'],
@@ -200,8 +214,7 @@ def main():
         'pe_imports': reports, 'omitted_optional_links': skipped,
         'excluded_runtime_directories': MANUAL_DIRECTORIES,
         'omitted_duplicate_files': duplicates,
-        'file_sha256': {str(p.relative_to(output)): sha256(p)
-                        for p in sorted(output.rglob('*')) if p.is_file()},
+        'file_sha256': payload_hashes,
     }
     (output / 'build-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     # Keep the signed index and signature next to the exact source archives.
@@ -218,11 +231,13 @@ def main():
     epoch = int(os.environ.get('SOURCE_DATE_EPOCH', '1791244800'))
     with zipfile.ZipFile(DIST / (NAME + '.zip'), 'w', zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(output.rglob('*')):
-            if path.is_file():
-                info = zipfile.ZipInfo(NAME + '/' + str(path.relative_to(output)), time.gmtime(epoch)[:6])
-                info.compress_type = zipfile.ZIP_DEFLATED
-                info.external_attr = (path.stat().st_mode & 0xFFFF) << 16
-                archive.writestr(info, path.read_bytes())
+            relative = NAME + '/' + str(path.relative_to(output))
+            info = zipfile.ZipInfo(relative + ('/' if path.is_dir() else ''), time.gmtime(epoch)[:6])
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = (path.stat().st_mode & 0xFFFF) << 16
+            if path.is_dir():
+                info.external_attr |= 0x10
+            archive.writestr(info, b'' if path.is_dir() else path.read_bytes())
     artifacts = [DIST / (NAME + '.zip'), sources]
     (DIST / 'SHA256SUMS').write_text(''.join(f'{sha256(p)}  {p.name}\n' for p in artifacts))
     for path in artifacts:

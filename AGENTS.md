@@ -25,6 +25,15 @@ Windows-ZIPs ohne Man- und Info-Handbuchseiten ausliefern. Alle Archivpfade auf
 Windows-kompatible Namen prüfen und jede ausgelieferte Datei außer dem Manifest
 selbst mit ihrem Hash im Manifest erfassen. Lizenzhinweise und die Installationsanleitung mitliefern.
 
+Defaultvorlagen unter `/etc/defaults/etc` erhalten. `--yes` darf bestehende
+Konfigurationen nicht löschen; Portänderungen einschließlich 22 prüfen.
+Nur LocalSystem unterstützen, Konto-/Passwortargumente ohne Geheimnisausgabe
+abweisen. NSS-Home und Shell-HOME konsistent halten, Zustandsverzeichnisse im ZIP
+erhalten, Dateilogs und Rotation dokumentieren. Nutzdatei-SHA256SUMS samt
+PowerShell-Prüfer mitliefern. Bestehende NTFS-/Benutzerrechte nicht pauschal ändern.
+Den nativen Teilbefund in `docs/windows-validation-2026-10-19.md` nicht als
+vollständige Abnahme neuer Installer, Neustarts oder Aktualisierungen auslegen.
+
 ZIP-Prüfung, DLL-/Versionsnachweise und ergänzende Laufzeittests vor Veröffentlichung
 ausführen. Ohne belegte native Windows-Abnahme weiterhin Prereleases veröffentlichen
 und diese Grenze nennen. Keine bestehenden Release-Tags verschieben oder bereits

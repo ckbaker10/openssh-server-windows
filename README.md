@@ -20,7 +20,9 @@ Ergebnisse:
 - `dist/openssh-10.6p1-cygwin-x86_64-sources.tar`: zugehörige Quellen, signierter Paketindex und Cross-Build-Patch.
 - `dist/SHA256SUMS`: Prüfsummen der beiden Archive.
 
-Das ZIP enthält zusätzlich `build-manifest.json` mit Dateihashes, DLL-Imports,
+Das ZIP enthält eine `SHA256SUMS` mit Nutzdateihashes und `verify-package.ps1`
+zur Prüfung ohne JSON (Syntax für Windows PowerShell 5.1). Zusätzlich enthält es
+`build-manifest.json` mit Dateihashes, DLL-Imports,
 Compiler- und RPM-Versionen sowie `inputs.lock.json` mit den festgehaltenen Eingaben.
 `work/` enthält die erzeugten Builddaten und wird wie `dist/` nicht eingecheckt.
 Das Windows-ZIP enthält keine Man- oder Info-Handbuchseiten. Alle Archivnamen
@@ -77,6 +79,13 @@ Die [Korrektur der Windows-Paketierung in Paketrevision 2](docs/release-v10.6p1-
 entfernt Handbuchseiten und prüft die vollständige Dateiliste gegen das Manifest.
 Die ursprüngliche [Machbarkeitsrecherche](docs/openssh-windows-recherche-2026-10-19.md)
 beschreibt die Auswahl von OpenSSH mit Cygwin.
+
+Die [native Windows-Teilabnahme von Revision 1](docs/windows-validation-2026-10-19.md)
+bestätigt Anmeldung, Admin-Token, Exitcodes, TTY und Dateitransfers. Revision 3
+ergänzt sichere Konfigurationsübernahme, LocalSystem-Validierung, konsistente
+Homes, Dateilogs und Prüfsummen. Diese Installationsänderungen benötigen noch
+einen erneuten Windows-Test; der Release bleibt ein Prerelease.
+Details: [Prüfbericht der Paketrevision 3](docs/release-v10.6p1-cygwin.3.md).
 
 ## Wöchentliche Pflege und Releases
 

@@ -1,0 +1,105 @@
+--- a/bin/ssh-host-config
++++ b/bin/ssh-host-config
+@@ -48,6 +48,15 @@
+ csih_sanity_check_server=yes
+ source ${CSIH_SCRIPT}
+ 
++# Preserve operator configuration even with --yes.
++openssh_install_config() {
++  if [ -f "$1" ]; then
++    csih_inform "Keeping existing $1"
++    return 0
++  fi
++  csih_install_config "$@"
++}
++
+ PROGNAME=$(/usr/bin/basename $0)
+ _tdir=$(/usr/bin/dirname $0)
+ PROGDIR=$(cd $_tdir && pwd)
+@@ -61,6 +70,7 @@
+ 
+ sshd_config_configured=no
+ port_number=22
++port_specified=no
+ service_name=cygsshd
+ strictmodes=yes
+ cygwin_value=""
+@@ -167,10 +177,13 @@
+ 
+   # Modify sshd_config
+   csih_inform "Updating ${SYSCONFDIR}/sshd_config file"
+-  if [ "${port_number}" -ne 22 ]
+-  then
+-    /usr/bin/sed -i -e "s/^#\?[[:space:]]*Port[[:space:]].*/Port ${port_number}/" \
+-      ${SYSCONFDIR}/sshd_config
++  if [ "${port_specified}" = "yes" ]
++  then
++    if /usr/bin/grep -Eq '^#?[[:space:]]*Port[[:space:]]' "${SYSCONFDIR}/sshd_config"; then
++      /usr/bin/sed -i -E "s/^#?[[:space:]]*Port[[:space:]].*/Port ${port_number}/" "${SYSCONFDIR}/sshd_config"
++    else
++      /usr/bin/sed -i "1i Port ${port_number}" "${SYSCONFDIR}/sshd_config"
++    fi
+     if [ $? -ne 0 ]
+     then
+       csih_warning "Setting listening port to ${port_number} failed!"
+@@ -452,7 +465,7 @@
+       if [ -z "${password}" ]
+       then
+ 	if /usr/bin/cygrunsrv -I ${service_name} -d "CYGWIN ${service_name}" -p /usr/sbin/sshd \
+-			      -a "-D" -y tcpip "${cygwin_env[@]}"
++			      -a "-D -E /var/log/sshd.log" -y tcpip "${cygwin_env[@]}"
+ 	then
+ 	  echo
+ 	  csih_inform "The sshd service has been installed under the LocalSystem"
+@@ -462,7 +475,7 @@
+ 	fi
+       else
+ 	if /usr/bin/cygrunsrv -I ${service_name} -d "CYGWIN ${service_name}" -p /usr/sbin/sshd \
+-			      -a "-D" -y tcpip "${cygwin_env[@]}" \
++			      -a "-D -E /var/log/sshd.log" -y tcpip "${cygwin_env[@]}" \
+ 			      -u "${run_service_as}" -w "${password}"
+ 	then
+ 	  /usr/bin/editrights -u "${run_service_as}" -a SeServiceLogonRight
+@@ -555,6 +568,7 @@
+ 
+   -p | --port )
+     port_number=$1
++    port_specified=yes
+     shift
+     ;;
+ 
+@@ -668,17 +682,7 @@
+ /usr/bin/ssh-keygen -A || let warning_cnt+=$?
+ 
+ # handle ssh_config
+-csih_install_config "${SYSCONFDIR}/ssh_config" "${SYSCONFDIR}/defaults" || let ++warning_cnt
+-if /usr/bin/cmp "${SYSCONFDIR}/ssh_config" "${SYSCONFDIR}/defaults/${SYSCONFDIR}/ssh_config" >/dev/null 2>&1
+-then
+-  if [ "${port_number}" != "22" ]
+-  then
+-    csih_inform "Updating ${SYSCONFDIR}/ssh_config file with requested port"
+-    echo "Host localhost" >> ${SYSCONFDIR}/ssh_config
+-    echo "    Port ${port_number}" >> ${SYSCONFDIR}/ssh_config
+-  fi
+-fi
+-
++openssh_install_config "${SYSCONFDIR}/ssh_config" "${SYSCONFDIR}/defaults" || let ++warning_cnt
+ # handle sshd_config
+ # make sure not to change the existing file
+ mod_before=""
+@@ -686,13 +690,13 @@
+ then
+   mod_before=$(stat "${SYSCONFDIR}/sshd_config" | grep '^Modify:')
+ fi
+-csih_install_config "${SYSCONFDIR}/sshd_config" "${SYSCONFDIR}/defaults" || let ++warning_cnt
++openssh_install_config "${SYSCONFDIR}/sshd_config" "${SYSCONFDIR}/defaults" || let ++warning_cnt
+ mod_now=$(stat "${SYSCONFDIR}/sshd_config" | grep '^Modify:')
+ if ! /usr/bin/cmp "${SYSCONFDIR}/sshd_config" "${SYSCONFDIR}/defaults/${SYSCONFDIR}/sshd_config" >/dev/null 2>&1
+ then
+   sshd_config_configured=yes
+ fi
+-if [ "${mod_before}" != "${mod_now}" ]
++if [ "${mod_before}" != "${mod_now}" ] || [ "${port_specified}" = "yes" ]
+ then
+   sshd_strictmodes || let warning_cnt+=$?
+   sshd_config_tweak || let warning_cnt+=$?
