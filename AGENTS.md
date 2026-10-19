@@ -33,6 +33,13 @@ erhalten, Dateilogs und Rotation dokumentieren. Nutzdatei-SHA256SUMS samt
 PowerShell-Prüfer mitliefern. Bestehende NTFS-/Benutzerrechte nicht pauschal ändern.
 Den nativen Teilbefund in `docs/windows-validation-2026-10-19.md` nicht als
 vollständige Abnahme neuer Installer, Neustarts oder Aktualisierungen auslegen.
+Revision 3 hat eine Teilabnahme mit Workarounds unter
+`docs/windows-validation-revision3-2026-10-19.md`. SYSTEM-ACL als Gruppe `g:18`
+setzen und Fehler sichtbar, aber nicht fatal behandeln. Bereits korrekte
+Dienstdateibesitzer erhalten; echte chown-Fehler nicht verschweigen.
+PowerShell-Standardpfad erst nach Parameterbindung mit MyInvocation-Rückfall
+auflösen; explizites `-Path` dokumentieren. Robocopy-Sicherung und Übernahme
+mit `/B` beschreiben, damit private Hostschlüssel vollständig erhalten bleiben.
 
 ZIP-Prüfung, DLL-/Versionsnachweise und ergänzende Laufzeittests vor Veröffentlichung
 ausführen. Ohne belegte native Windows-Abnahme weiterhin Prereleases veröffentlichen

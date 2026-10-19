@@ -1,6 +1,6 @@
 --- a/bin/ssh-host-config
 +++ b/bin/ssh-host-config
-@@ -48,6 +48,15 @@
+@@ -48,6 +48,26 @@
  csih_sanity_check_server=yes
  source ${CSIH_SCRIPT}
  
@@ -13,10 +13,21 @@
 +  csih_install_config "$@"
 +}
 +
++# Keep valid NTFS ownership and ACLs during upgrades.
++openssh_chown_service_file() {
++  local expected_uid current_uid
++  expected_uid=$(id -u "${run_service_as}") || return 1
++  current_uid=$(stat -c %u "$1") || return 1
++  if [ "${current_uid}" = "${expected_uid}" ]; then
++    return 0
++  fi
++  chown "${run_service_as}".544 "$1"
++}
++
  PROGNAME=$(/usr/bin/basename $0)
  _tdir=$(/usr/bin/dirname $0)
  PROGDIR=$(cd $_tdir && pwd)
-@@ -61,6 +70,7 @@
+@@ -61,6 +81,7 @@
  
  sshd_config_configured=no
  port_number=22
@@ -24,7 +35,7 @@
  service_name=cygsshd
  strictmodes=yes
  cygwin_value=""
-@@ -167,10 +177,13 @@
+@@ -167,10 +188,13 @@
  
    # Modify sshd_config
    csih_inform "Updating ${SYSCONFDIR}/sshd_config file"
@@ -42,7 +53,38 @@
      if [ $? -ne 0 ]
      then
        csih_warning "Setting listening port to ${port_number} failed!"
-@@ -452,7 +465,7 @@
+@@ -339,26 +363,26 @@
+   do
+     if [ -f "$i" ]
+     then
+-      if ! chown "${run_service_as}".544 "$i" >/dev/null 2>&1
++      if ! openssh_chown_service_file "$i" >/dev/null 2>&1
+       then
+ 	csih_warning "Couldn't change owner of $i!"
+ 	let ++ret
+       fi
+     fi
+   done
+-  if ! chown "${run_service_as}".544 ${LOCALSTATEDIR}/empty >/dev/null 2>&1
++  if ! openssh_chown_service_file ${LOCALSTATEDIR}/empty >/dev/null 2>&1
+   then
+     csih_warning "Couldn't change owner of ${LOCALSTATEDIR}/empty!"
+     let ++ret
+   fi
+-  if ! chown "${run_service_as}".544 ${LOCALSTATEDIR}/log/lastlog >/dev/null 2>&1
++  if ! openssh_chown_service_file ${LOCALSTATEDIR}/log/lastlog >/dev/null 2>&1
+   then
+     csih_warning "Couldn't change owner of ${LOCALSTATEDIR}/log/lastlog!"
+     let ++ret
+   fi
+   if [ -f ${LOCALSTATEDIR}/log/sshd.log ]
+   then
+-    if ! chown "${run_service_as}".544 ${LOCALSTATEDIR}/log/sshd.log >/dev/null 2>&1
++    if ! openssh_chown_service_file ${LOCALSTATEDIR}/log/sshd.log >/dev/null 2>&1
+     then
+       csih_warning "Couldn't change owner of ${LOCALSTATEDIR}/log/sshd.log!"
+       let ++ret
+@@ -452,7 +476,7 @@
        if [ -z "${password}" ]
        then
  	if /usr/bin/cygrunsrv -I ${service_name} -d "CYGWIN ${service_name}" -p /usr/sbin/sshd \
@@ -51,7 +93,7 @@
  	then
  	  echo
  	  csih_inform "The sshd service has been installed under the LocalSystem"
-@@ -462,7 +475,7 @@
+@@ -462,7 +486,7 @@
  	fi
        else
  	if /usr/bin/cygrunsrv -I ${service_name} -d "CYGWIN ${service_name}" -p /usr/sbin/sshd \
@@ -60,7 +102,7 @@
  			      -u "${run_service_as}" -w "${password}"
  	then
  	  /usr/bin/editrights -u "${run_service_as}" -a SeServiceLogonRight
-@@ -555,6 +568,7 @@
+@@ -555,6 +579,7 @@
  
    -p | --port )
      port_number=$1
@@ -68,7 +110,12 @@
      shift
      ;;
  
-@@ -668,17 +682,7 @@
+@@ -664,21 +689,11 @@
+ fi
+ 
+ # generate missing host keys
+-csih_inform "Generating missing SSH host keys"
++csih_inform "Ensuring SSH host keys exist (existing keys are kept)"
  /usr/bin/ssh-keygen -A || let warning_cnt+=$?
  
  # handle ssh_config
@@ -87,7 +134,7 @@
  # handle sshd_config
  # make sure not to change the existing file
  mod_before=""
-@@ -686,13 +690,13 @@
+@@ -686,13 +701,13 @@
  then
    mod_before=$(stat "${SYSCONFDIR}/sshd_config" | grep '^Modify:')
  fi

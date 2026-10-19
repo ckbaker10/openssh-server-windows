@@ -83,9 +83,17 @@ beschreibt die Auswahl von OpenSSH mit Cygwin.
 Die [native Windows-Teilabnahme von Revision 1](docs/windows-validation-2026-10-19.md)
 bestätigt Anmeldung, Admin-Token, Exitcodes, TTY und Dateitransfers. Revision 3
 ergänzt sichere Konfigurationsübernahme, LocalSystem-Validierung, konsistente
-Homes, Dateilogs und Prüfsummen. Diese Installationsänderungen benötigen noch
-einen erneuten Windows-Test; der Release bleibt ein Prerelease.
+Homes, Dateilogs und Prüfsummen.
 Details: [Prüfbericht der Paketrevision 3](docs/release-v10.6p1-cygwin.3.md).
+
+Die [native Teilabnahme von Revision 3](docs/windows-validation-revision3-2026-10-19.md)
+bestätigt Entpacken, PowerShell-5.1-Prüfung mit `-Path`, Konfigurationserhalt,
+Home-Auflösung, Dateilogs und Dateitransfers mit unveränderten Hostschlüsseln.
+Die Aktualisierung gelang mit Workarounds. Revision 4 korrigiert den fatalen
+SYSTEM-ACL-Aufruf, die Prüfer-Pfadermittlung und unnötige Besitzerwechsel;
+die Anleitung verwendet Robocopy `/B`. Neue Korrekturen, Neustart und Rückkehr
+brauchen noch eine Windows-Abnahme; weiterhin Prerelease.
+Details: [Prüfbericht der Paketrevision 4](docs/release-v10.6p1-cygwin.4.md).
 
 ## Wöchentliche Pflege und Releases
 

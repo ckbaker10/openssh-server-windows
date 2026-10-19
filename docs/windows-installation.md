@@ -4,8 +4,10 @@ OpenSSH 10.6p1 mit Cygwin 3.6.11 und Bash; unter Linux ohne Microsoft-SDK gebaut
 Die optionale Windows-OpenSSH-Komponente ist nicht nötig. Der Dienst wird als
 **LocalSystem** installiert. `--user`, `--pwd` und `--privileged` werden mit einem
 Fehler abgewiesen; ein Konto `cyg_server` wird nicht angelegt.
-Die Windows-Teilabnahme der Revision 1 belegt Anmeldung, Admin-Token, Exitcodes,
-TTY, SCP und SFTP. Die geänderte Installation ist noch nicht nativ geprüft.
+Die Windows-Teilabnahmen der Revisionen 1 und 3 belegen Anmeldung, Admin-Token,
+Exitcodes, TTY, SCP/SFTP, in Revision 3 auch Home-Auflösung und Dateilogs.
+Die Aktualisierung auf Revision 3 gelang mit den dokumentierten Workarounds.
+Die neuen Korrekturen in Revision 4 sind noch nicht nativ geprüft.
 
 ## 1. Entpacken und prüfen
 
@@ -25,12 +27,15 @@ Vor der Installation in PowerShell alle Nutzdateien prüfen:
 
 ```powershell
 Set-Location 'C:\Program Files\OpenSSH-Cygwin'
-powershell.exe -NoProfile -File .\verify-package.ps1
+powershell.exe -NoProfile -File .\verify-package.ps1 -Path 'C:\Program Files\OpenSSH-Cygwin'
 ```
 
 Der Prüfer liest die paketinterne `SHA256SUMS`, kein JSON, und scheitert auch an
-einer leeren Prüfliste. Er verwendet Syntax für Windows PowerShell 5.1; getestet
-wurde er automatisiert unter PowerShell 7 auf Linux, nicht unter 5.1 auf Windows.
+einer leeren Prüfliste. Revision 3 wurde mit explizitem `-Path` unter Windows
+PowerShell 5.1.26100 erfolgreich geprüft (1960 Dateien). Revision 4 löst den
+Standardpfad erst nach Parameterbindung auf und nutzt bei leerem `$PSScriptRoot`
+`$MyInvocation.MyCommand.Path`. Der neue Rückfall wurde unter PowerShell 7/Linux
+getestet; für nicht interaktive Aufrufe weiterhin `-Path` ausdrücklich angeben.
 Die Liste erfasst alle Nutzdateien außer sich selbst und `build-manifest.json`.
 Das Manifest erfasst zusätzlich die Prüfliste, aber nicht sich selbst.
 Die Release-Prüfsumme schützt das ganze ZIP einschließlich beider Metadateien.
@@ -126,9 +131,20 @@ Das entspricht `var\log\sshd.log` im Installationsbaum. Der Cygwin-Helfer ordnet
 Hostschlüssel, `/var/empty` und Logdatei abschließend SYSTEM zu. Der Wrapper
 bereitet nur seine Zustandsverzeichnisse vor und ändert keine Modi am
 Installationswurzelordner. Besitzprobleme dieser Pfade werden mit gezieltem
-`icacls /setowner` behandelt. Ob damit alle gemeldeten Warnungen verschwinden,
-braucht einen erneuten Windows-Test. Nach der Installation `sshd -t`,
+`icacls /setowner` behandelt. SYSTEM-Verzeichnisrechte werden als Gruppeneintrag
+`g:18:rwx` gesetzt. Schlägt das fehl, erscheint eine Warnung; die Einrichtung
+läuft weiter. Vor dem Start SYSTEM-Zugriff auf `/var/log` und `/var/run` prüfen.
+Bereits korrekt dem Dienstkonto gehörende Dateien werden nicht erneut mit
+`chown` verändert. Ein abweichender Besitzer wird weiterhin korrigiert; schlägt
+das fehl, bleibt die Warnung erhalten. Die neue Warnungsfreiheit braucht einen
+Windows-Test. Nach der Installation `sshd -t`,
 `ls -ld /var/empty` und `ls -l /etc/ssh_host_*` prüfen.
+
+`Ensuring SSH host keys exist (existing keys are kept)` bezeichnet `ssh-keygen -A`:
+es ergänzt nur fehlende Hostschlüssel und ersetzt vorhandene nicht. Revision 3
+meldete acht Besitzwarnungen bei bereits SYSTEM gehörenden übernommenen Schlüsseln;
+deren Fingerprints blieben laut Windows-Test gleich. Eine Warnung nur dann als
+unnötigen Besitzerwechsel einordnen, wenn die tatsächlichen Besitzer stimmen.
 
 Standard-LogLevel ist `INFO`; für mehr Details `LogLevel VERBOSE` in
 `etc\sshd_config` eintragen und neu starten. Die Dateiprotokollierung umgeht
@@ -178,17 +194,26 @@ und SYSTEM-Rechte gezielt wiederherstellen. Kein blindes rekursives
 Eine DACL-Sicherung mit `icacls <übergeordneter-Ordner> /restore <Sicherung>`
 am ursprünglichen Pfad zurückspielen; Besitzer getrennt prüfen.
 
-Aktualisierung wurde noch nicht nativ getestet. Für einen Wartungstermin:
+Aktualisierung von Revision 1 auf 3 wurde mit einer lokalen ACL-Korrektur und
+Robocopy-Backupmodus erfolgreich getestet. Die unveränderte Revision 3 brach am
+ACL-Aufruf ab. Der korrigierte Ablauf der Revision 4 benötigt eine neue Abnahme:
 
 1. Neues ZIP prüfen und in einen neuen, nur administrativ beschreibbaren Ordner
    entpacken. Den alten Baum behalten. Aktuelle Dienstregistrierung mit
    `bin\cygrunsrv.exe -VQ openssh-cygwin` lokal sichern.
 2. Genau diesen Dienst stoppen. `etc`, Homes und eigene Daten mit ACLs/Besitzern
    auf ein geeignetes NTFS-Ziel sichern, etwa mit administrativem
-   `robocopy /E /COPYALL /DCOPY:DAT`. Exitcodes ab 8 sind Fehler. Backups mit
+   `robocopy <Quelle> <Ziel> /E /B /COPYALL /DCOPY:DAT`. `/B` verwendet den
+   Backupmodus, damit auch nur SYSTEM lesbare private Hostschlüssel kopiert
+   werden. Erhöhtes Terminal und verfügbare Sicherungs-/Wiederherstellungsrechte
+   (`SeBackupPrivilege`, `SeRestorePrivilege`) sind dafür erforderlich; bei
+   fehlenden Rechten nicht mit unvollständigem Backup fortfahren.
+   Exitcodes ab 8 sind Fehler. Backups mit
    privaten Schlüsseln nur Administratoren/SYSTEM zugänglich machen.
 3. Konfigurationen, Hostschlüssel und Homes unter Erhalt der Rechte in den neuen
-   Baum übernehmen. Aktive Konfigurationen nicht durch Vorlagen ersetzen.
+   Baum übernehmen, auch hierfür `robocopy <Quelle> <Ziel> /E /B /COPYALL /DCOPY:DAT`
+   verwenden. Anzahl, Hashes, Besitzer und ACLs aller privaten Hostschlüssel
+   prüfen, ohne deren Inhalte auszugeben. Aktive Konfigurationen nicht durch Vorlagen ersetzen.
    `nsswitch.conf` auf den gewünschten Homepfad prüfen, neue Vorlagen separat vergleichen.
 4. Den gestoppten eigenen Dienst mit dem **alten** `bin\cygrunsrv.exe -R openssh-cygwin`
    entfernen. Im neuen Ordner `.\install-server.cmd --yes --name openssh-cygwin`
@@ -210,8 +235,10 @@ Besitzer-/DACL-Reparatur oben verwenden.
 
 ## 6. Abnahmegrenze
 
-Zusätzlich Dienststart nach Windows-Neustart, Update/Rückkehr und echten
+Zusätzlich Dienststart nach Windows-Neustart, den korrigierten Updateablauf,
+Rückkehr und echten
 Netzwerkzugriff prüfen. Freigaben bei Schlüsselanmeldung können zusätzliche
 Windows-Authentifizierung erfordern. Ansible/ähnliche Werkzeuge gegen Cygwin-Bash
 prüfen. Grundlagen: [Cygwin-Konten und NTFS-Rechte](https://cygwin.com/cygwin-ug-net/ntsec.html),
 [Microsoft icacls](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/icacls).
+Backupmodus: [Microsoft robocopy](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy).

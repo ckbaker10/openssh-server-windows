@@ -1,7 +1,16 @@
 # Compatible with Windows PowerShell 5.1; no JSON parsing is required.
 [CmdletBinding()]
-param([string]$Path = $PSScriptRoot)
+param([string]$Path)
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($Path)) {
+    $Path = $PSScriptRoot
+    if ([string]::IsNullOrWhiteSpace($Path) -and $MyInvocation.MyCommand.Path) {
+        $Path = Split-Path -Parent $MyInvocation.MyCommand.Path
+    }
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        throw 'Cannot determine the package directory. Supply -Path explicitly.'
+    }
+}
 $root = [System.IO.Path]::GetFullPath($Path).TrimEnd([char[]]'\/')
 $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 $checked = 0

@@ -45,6 +45,14 @@ prepare_owned_path() {
     chmod "$mode" "$path"
 }
 
+ensure_system_directory_acl() {
+    # SYSTEM is represented as a group in the reported Cygwin ACLs.
+    if ! setfacl -m g:18:rwx "$@"; then
+        echo 'Warning: SYSTEM directory ACL could not be updated; check /var/log and /var/run access before starting the service.' >&2
+    fi
+    return 0
+}
+
 main() {
     parse_arguments "$@" || return $?
     if [[ $show_help == yes ]]; then
@@ -66,7 +74,7 @@ main() {
     prepare_owned_path /var/empty 755
     prepare_owned_path /var/log 770
     prepare_owned_path /var/run 770
-    setfacl -m u:18:rwx /var/log /var/run
+    ensure_system_directory_acl /var/log /var/run
     if [[ ! -e /var/log/sshd.log ]]; then
         : > /var/log/sshd.log
     fi

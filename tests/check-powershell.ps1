@@ -2,7 +2,12 @@
 $ErrorActionPreference = 'Stop'
 $package = '/project/work/zip-check/openssh-10.6p1-cygwin-x86_64'
 $verify = Join-Path $package 'verify-package.ps1'
-& $verify
+Push-Location ([IO.Path]::GetTempPath())
+try { & $verify } finally { Pop-Location }
+$encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes("& '$verify' | Out-Null"))
+& pwsh -NoProfile -NonInteractive -EncodedCommand $encoded
+if ($LASTEXITCODE -ne 0) { throw 'Default path failed in a noninteractive encoded invocation.' }
+Write-Output 'Noninteractive default path from another directory: PASS'
 if ($PSVersionTable.PSVersion.Major -ne 7) { throw 'Record the changed PowerShell test environment.' }
 Write-Output ('PowerShell runtime: ' + $PSVersionTable.PSVersion)
 $fixture = Join-Path ([IO.Path]::GetTempPath()) ('openssh-check-' + [guid]::NewGuid())
@@ -15,6 +20,11 @@ try {
     $entry = $hash + '  payload' + "`n"
     [IO.File]::WriteAllText($sums, $entry)
     & $verify -Path $fixture
+    $fallback = Join-Path $fixture 'verify-fallback.ps1'
+    $code = [IO.File]::ReadAllText($verify).Replace('$Path = $PSScriptRoot', '$Path = [string]::Empty')
+    [IO.File]::WriteAllText($fallback, $code)
+    & $fallback
+    Write-Output 'Empty ScriptRoot with MyInvocation fallback: PASS'
     foreach ($case in 'tampered', 'empty', 'duplicate', 'escape', 'missing') {
         [IO.File]::WriteAllText($file, 'original')
         [IO.File]::WriteAllText($sums, $entry)

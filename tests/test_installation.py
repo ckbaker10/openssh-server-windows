@@ -38,6 +38,16 @@ class InstallerArguments(unittest.TestCase):
         result = self.parse('--name', 'my-sshd')
         self.assertEqual(result.stdout.splitlines(), ['--name', 'my-sshd'])
 
+    def test_system_group_acl_failure_is_reported_without_aborting(self):
+        code = ('source ' + shlex.quote(str(ROOT / 'packaging/install-server.sh'))
+                + '; setfacl() { printf "%s\\n" "$*"; return 1; }; '
+                + 'ensure_system_directory_acl /var/log /var/run; echo continued')
+        result = bash(code)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('-m g:18:rwx /var/log /var/run', result.stdout)
+        self.assertIn('continued', result.stdout)
+        self.assertIn('Warning:', result.stderr)
+
     def test_shell_replaces_inherited_home_from_account_lookup(self):
         # Isolate shell logic; actual Cygwin/Windows NSS needs native acceptance.
         code = ('getent() { printf "tester:x:1000:1000:Test:/tmp:/bin/bash\\n"; }; '
@@ -92,6 +102,20 @@ class PackagedHelper(unittest.TestCase):
     def test_shell_syntax(self):
         result = subprocess.run(['bash', '-n'], input=self.helper, text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_owner_change_skips_correct_owner_but_reports_real_failures(self):
+        function = self.function('openssh_chown_service_file')
+        for owner, change_exit in [('18', 1), ('1000', 0), ('1000', 1)]:
+            with self.subTest(owner=owner, change_exit=change_exit):
+                code = ('run_service_as=SYSTEM; id() { echo 18; }; '
+                        + 'stat() { echo ' + owner + '; }; '
+                        + 'chown() { echo "chown:$*"; return ' + str(change_exit) + '; };\n'
+                        + function + '\nopenssh_chown_service_file /test-key')
+                result = bash(code)
+                self.assertEqual(result.returncode, 0 if owner == '18' else change_exit)
+                self.assertEqual('chown:' in result.stdout, owner != '18')
+                if owner != '18':
+                    self.assertIn('SYSTEM.544 /test-key', result.stdout)
 
 
 if __name__ == '__main__':
