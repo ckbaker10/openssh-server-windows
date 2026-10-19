@@ -1,162 +1,127 @@
-# Lokales Nicht-Administrator-Konto einrichten
+# Unprivilegierte Benutzer einrichten
 
-`install-user.cmd` ist ein **administrativer Einrichtungshelfer für eine später
-unprivilegierte SSH-Sitzung**. Der Serverdienst bleibt LocalSystem. Der Helfer
-legt kein Windows-Konto an und ändert keine Windows-Gruppen oder Kennwörter.
+Der SSH-Dienst bleibt LocalSystem. `install-user.cmd` richtet als Administrator
+ein vorhandenes Windows-Konto für spätere eingeschränkte SSH-Sitzungen ein.
+Er legt keine Windows-Konten an und ändert weder Gruppen noch Kennwörter.
 
-## Erstinstallation
+## Voraussetzungen
 
-Ein vorhandenes aktiviertes lokales Konto verwenden, das kein Mitglied von
-Administrators ist. Built-in Administrator und Guest werden abgewiesen. Für ein
-neues Konto kann ein Administrator beispielsweise `New-LocalUser` mit einem
-über `Read-Host -AsSecureString` eingegebenen Kennwort verwenden. Dieses Kennwort
-wird für die vorgesehene SSH-Schlüsselanmeldung nicht verwendet; Passwortauthentifizierung
-bleibt in der Paketkonfiguration abgeschaltet. Keine leeren Kennwörter anlegen.
+- Aktiviertes lokales Konto ohne Administratorrechte; Built-in Administrator
+  und Guest werden abgewiesen.
+- Genau eine öffentliche OpenSSH-Schlüsseldatei, ohne private Daten oder
+  authorized_keys-Optionen.
+- Neues Cygwin-Home `/home/<Kontoname>` gemäß nsswitch.conf. Bestehende Homes
+  werden vor Änderungen abgewiesen und niemals überschrieben.
+- Erhöhte 64-Bit-PowerShell und verfügbarer Robocopy-Backupmodus.
 
-In einer **erhöhten 64-Bit-PowerShell**, vorzugsweise an der lokalen Konsole:
+Kontonamen dürfen 1-20 ASCII-Zeichen aus Buchstaben, Ziffern, `_`, `.` und `-`
+enthalten, nicht mit einem Punkt enden und müssen mit Buchstabe/Ziffer beginnen.
+Domänenkonten und abweichende Homepfade sind im Helfer nicht unterstützt.
 
-```powershell
-Set-Location 'C:\Program Files\OpenSSH-Cygwin'
-.\install-user.cmd sshtest 'C:\Keys\sshtest.pub'
-```
-
-Für einen anderen bereits eingerichteten Dienst:
+Ein Konto bei Bedarf vorher über Windows einrichten, zum Beispiel:
 
 ```powershell
-.\install-user.cmd sshtest 'C:\Keys\sshtest.pub' -ServiceName openssh-cygwin
+$Password = Read-Host 'Kennwort für das neue Windows-Konto' -AsSecureString
+New-LocalUser -Name sshuser -Password $Password
+Remove-Variable Password
 ```
 
-Nur die öffentliche OpenSSH-Schlüsseldatei übergeben, keinen privaten Schlüssel.
-Die Datei darf genau einen Schlüssel ohne authorized_keys-Optionen enthalten.
-`ssh-keygen` prüft den Schlüssel. Der Kontoname darf 1-20 ASCII-Zeichen aus
-Buchstaben, Ziffern, `_`, `.` und `-` enthalten und nicht mit einem Punkt enden.
-Domänenkonten und abweichende NSS-Homepfade werden vom Helfer nicht unterstützt.
+Keine Administratorgruppe hinzufügen. Das Kennwort wird für die vorgesehene
+SSH-Schlüsselanmeldung nicht verwendet; Passwortanmeldung bleibt abgeschaltet.
 
-Der Helfer prüft die lokale SID, die Cygwin-Kontodaten und Gruppen sowie
-`/home/<Kontoname>`. Das Home wird **neu** erstellt. Existiert bereits ein Home,
-bricht er vor Änderungen ab, statt Schlüssel oder Daten zu überschreiben. Für
-weitere Schlüssel kann der Benutzer seine eigene authorized_keys bearbeiten;
-vorhandene Homes nach der manuellen Anleitung in INSTALLATION.md einrichten.
+## Helfer ausführen
 
-Der Helfer sichert die aktive SYSTEM-Konfiguration per Robocopy-Backupmodus in
-einem nur Administratoren/SYSTEM zugänglichen Ordner unter
-`var\backups\user-<UTC>-<ID>\original`. `/B` braucht verfügbare Sicherungs- und
-Wiederherstellungsrechte. Backupfehler und Robocopy-Exitcodes ab 8 brechen ab.
-Eine vorhandene **globale** AllowUsers-Liste wird um das Konto ergänzt, ohne
-einen bereits identischen Eintrag zu duplizieren. Die Paketvorlage selbst besitzt
-keine AllowUsers-Liste; fehlt sie, wird keine neue Einschränkung eingeführt.
-Match-Blöcke werden nicht bearbeitet. Globale Include-Direktiven benötigen eine
-manuelle Prüfung und werden abgewiesen. AllowUsers-Muster mit Anführungszeichen
-oder Escape-Sequenzen benötigen ebenfalls
-eine manuelle Prüfung. DenyUsers, DenyGroups, AllowGroups und
-andere Zugriffsbeschränkungen bleiben wirksam und müssen zum Konto passen.
+In einer erhöhten PowerShell im Installationsordner:
 
-Ein laufender Dienst wird vor den Änderungen gestoppt; der Helfer prüft, dass
-die LocalSystem-Dienstregistrierung genau zu diesem Installationsordner gehört.
-`sshd_config` wird mit `/COPY:DAT` zurückkopiert, ihr Besitzer und ihre ACL
-müssen gleich bleiben. Nach erfolgreichem `sshd -t` werden Home, `.ssh` und die
-LF-/UTF-8-Schlüsseldatei angelegt. `icacls /setowner` setzt nur diese drei Pfade
-auf die Benutzer-SID, Bash prüft den Besitzer und setzt 700/700/600.
+```powershell
+.\install-user.cmd sshuser 'C:\Keys\sshuser.pub' -Start
+```
 
-Ein vorher laufender Dienst wird nach Erfolg wieder gestartet. Ein bereits
-gestoppter Dienst bleibt gestoppt. Mit `-NoRestart` bleibt er auch nach Erfolg
-gestoppt. Das Stoppen unterbricht die Verfügbarkeit; den Helfer nicht über eine
-Verbindung ausführen, deren Fortbestand vom betroffenen Dienst abhängt.
+Bei einem anderen Dienstnamen `-ServiceName <Name>` ergänzen. Die Registrierung
+muss zu diesem Installationsordner gehören und als LocalSystem laufen.
+Eine laufende Instanz wird für die Einrichtung gestoppt; deshalb eine Konsole
+nutzen, die nicht vom Fortbestand dieses SSH-Dienstes abhängt.
 
-Bei einem Fehler nach Beginn der Änderungen wird die ursprüngliche Konfiguration
-zurückkopiert und der Dienst **nicht** automatisch gestartet. Ein eventuell neu
-angelegtes Home bleibt zur Prüfung erhalten. Erst Konfiguration, Schlüssel,
-Besitzer und Modi prüfen, dann gezielt starten. Misslingt die Rückkopie, die
-ausgegebene Sicherung zur Wiederherstellung verwenden. Ein nach einem Abbruch
-übrig gebliebener `var\run\install-user.lock` darf erst entfernt werden, wenn
-keine andere Einrichtung mehr läuft.
+| Option | Verhalten nach erfolgreicher Einrichtung |
+| --- | --- |
+| ohne Startoption | Einen vorher laufenden Dienst wieder starten; einen gestoppten gestoppt lassen |
+| `-Start` | Dienst immer starten, auch nach einem früheren Fehlversuch |
+| `-NoRestart` | Dienst gestoppt lassen |
 
-Der neue Helfer wurde auf Linux mit isolierten Windows-/NTFS-Schnittstellen
-geprüft; seine vollständige Ausführung auf Windows steht noch aus. Die manuelle
-[Nicht-Administrator-Teilabnahme der Revision 4](windows-validation-nonadmin-2026-10-19.md)
-belegt die zugrunde liegenden Anmeldeschritte und den eingeschränkten Token.
+`-Start` und `-NoRestart` dürfen nicht kombiniert werden. Die Abschlussmeldung
+zeigt ausdrücklich RUNNING oder STOPPED; bei STOPPED kann anschließend
+`Start-Service openssh-cygwin` ausgeführt werden.
 
-## Anmeldung prüfen
+## Änderungen und Rückkehr bei Fehlern
 
-Hostschlüssel vorab über einen vertrauenswürdigen Weg übernehmen, nicht die
-Hostschlüsselprüfung abschalten. Von einem SSH-Client zum Beispiel:
+Der Helfer prüft Windows-SID, Cygwin-Kontodaten, Home und Gruppen. Er validiert
+den öffentlichen Schlüssel mit ssh-keygen. Nur Home, .ssh und authorized_keys
+werden angelegt, per icacls der Benutzer-SID zugeordnet und auf 700/700/600 gesetzt.
+Für spätere zusätzliche Schlüssel kann der Benutzer seine eigene authorized_keys bearbeiten.
+
+Eine vorhandene globale AllowUsers-Liste wird ohne identischen Doppeleintrag
+ergänzt. Fehlt sie, wird keine neue Liste erzeugt. Match bleibt unverändert;
+globale Includes und zitierte/escapte AllowUsers-Muster brauchen manuelle Prüfung.
+DenyUsers, DenyGroups, AllowGroups und andere Regeln bleiben wirksam.
+
+Die SYSTEM-Konfiguration wird per Robocopy /B /COPY:DAT in einen geschützten
+Ordner `var\backups\user-<UTC>-<ID>` gesichert. Besitzer und ACL beim
+Zurückschreiben müssen gleich bleiben. Vor dem Anlegen des Homes wird mit
+explizitem Cygwin-PATH `sshd -t` ausgeführt. Für manuelle Konfigurationsänderungen
+den Ablauf in INSTALLATION.md nutzen; direkter Administratorzugriff kann scheitern.
+
+Bei Fehlern nach Beginn der Änderungen stoppt der Helfer den Dienst und versucht
+die ursprüngliche Konfiguration zurückzuspielen. Er startet dann nicht automatisch.
+Ein eventuell angelegtes Home bleibt zur Prüfung erhalten. Backup, Konfiguration,
+Besitzer und Modi prüfen, bevor der Dienst wieder gestartet wird. Eine verwaiste
+`var\run\install-user.lock` erst entfernen, wenn keine Einrichtung mehr läuft.
+
+## Eingeschränkte Anmeldung prüfen
+
+Hostschlüssel vorab vertrauenswürdig übernehmen, dann vom Client beispielsweise:
 
 ```bash
-ssh -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes -i ~/.ssh/testkey -p 2222 sshtest@server.example 'id; printf "HOME=%s\n" "$HOME"'
-scp -P 2222 -i ~/.ssh/testkey datei sshtest@server.example:datei
+ssh -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes -i ~/.ssh/userkey -p 2222 sshuser@server.example 'id; printf "HOME=%s\n" "$HOME"'
+scp -P 2222 -i ~/.ssh/userkey datei sshuser@server.example:datei
 ```
 
-Erwartet sind `/home/sshtest`, keine Administrators-Gruppe, Medium Mandatory
-Level, `IsInRole(Administrator) = False` in PowerShell sowie verweigerte
-Schreibrechte nach Windows/System32 und verweigerter Zugriff auf private
-Hostschlüssel und Dienststeuerung. Passwortanmeldung muss abgewiesen bleiben.
-Dateitransfer mit Hashvergleich, Exitcode und TTY prüfen. Zusätzliche Gruppen,
-Domänenkonten, parallele Sitzungen und Ansible sind noch nicht nativ abgenommen.
+Erwartet: /home/sshuser, keine Administrators-Gruppe, Medium Mandatory Level,
+Admin=False bei PowerShell-Tokenprüfung. Schreibzugriff auf Windows-System-
+verzeichnisse, Lesen privater Hostschlüssel/sshd_config und Dienststeuerung sollen
+verweigert werden. TTY, Exitcodes und Dateitransfers mit Hashvergleich prüfen;
+Passwortanmeldung muss abgewiesen bleiben.
 
-## Zugang und Konto entfernen
+## Konto entfernen
 
-Der Einrichtungshelfer löscht keine Konten oder Profile. Für eine Entfernung in
-einem administrativen Wartungsfenster zuerst die SID festhalten:
+In einem administrativen Wartungsfenster die genaue SID vor Löschung/Neustart
+festhalten, Konto deaktivieren und eigenen Dienst stoppen:
 
 ```powershell
-$Name = 'sshtest'
+$Name = 'sshuser'
 $Sid = (Get-LocalUser -Name $Name).SID.Value
-$Sid # Vor Kontoloeschung/Neustart lokal festhalten; danach genau diese SID verwenden.
+$Sid
 $Root = 'C:\Program Files\OpenSSH-Cygwin'
 $UserHome = Join-Path (Join-Path $Root 'home') $Name
 Disable-LocalUser -Name $Name
-Stop-Service -Name openssh-cygwin
+Stop-Service openssh-cygwin
 ```
 
-Alle Sitzungen dieses Kontos beenden. Öffentliche Schlüssel entfernen und eine
-vorhandene AllowUsers-Liste über den Konfigurationsablauf in INSTALLATION.md
-gezielt anpassen. Nicht blind eine alte Gesamtkonfiguration zurückspielen;
-dadurch würden spätere Änderungen verloren gehen. Beim Entfernen des letzten
-AllowUsers-Eintrags nicht versehentlich die gesamte Einschränkung aufheben.
+Sitzungen des Kontos beenden. Schlüssel entfernen und eine AllowUsers-Liste über
+den Backupmodus gezielt anpassen. Keine alte Gesamtkonfiguration über spätere
+Änderungen kopieren. Beim Entfernen des letzten AllowUsers-Eintrags nicht
+versehentlich die gesamte Einschränkung aufheben.
 
-Nach Prüfung des exakten Homepfads und ohne darin enthaltene Reparsepoints
-können dessen Rechte zur gezielten Entfernung übernommen werden:
+Nur nach Prüfung des exakten eigenen Homepfads und ohne Reparsepoints darin:
 
 ```powershell
 icacls.exe $UserHome /setowner '*S-1-5-32-544' /t /c
+if ($LASTEXITCODE -ne 0) { throw 'Besitzerwechsel fehlgeschlagen' }
 icacls.exe $UserHome /grant '*S-1-5-32-544:(OI)(CI)F' /t /c
+if ($LASTEXITCODE -ne 0) { throw 'Rechteänderung fehlgeschlagen' }
 Remove-Item -LiteralPath $UserHome -Recurse -Force
 Remove-LocalUser -Name $Name
 ```
 
-Native Fehlercodes der icacls-Aufrufe prüfen; bei Fehlern nicht mit dem Löschen
-fortfahren. Niemals den gesamten Installationsbaum auf das Benutzerkonto übertragen.
-Anschließend Konfigurationssyntax prüfen und nur den gewählten Dienst wieder starten.
-
-## Geladenes Windows-Profil
-
-Im nativen Test blieb das Profil nach der SSH-Abmeldung und Dienststopp geladen.
-Das ist ein beobachteter Befund; ein S4U-Tokenleck oder Speicherleck ist bisher
-nicht bewiesen. `reg unload` nicht erzwingen und keine fremden Prozesse beenden.
-Nach einem geplanten Neustart ausschließlich das zuvor festgehaltene Konto prüfen:
-
-```powershell
-$Profile = Get-CimInstance Win32_UserProfile -Filter "SID='$Sid'"
-$Profile | Select-Object SID,LocalPath,Loaded
-if ($Profile -and -not $Profile.Loaded) {
-    $Profile | Remove-CimInstance
-}
-```
-
-Bei `Loaded=True` nicht entfernen. Profilverzeichnis und Registry-Hives nicht
-pauschal manuell löschen. Eine native Diagnose mit wiederholten Sitzungen,
-Handle-/Tokenzahlen und Profilzustand ist noch offen; Details der begrenzten
-Quellprüfung stehen im Releasebericht.
-
-## Sitzungsumgebung
-
-Cygwin-OpenSSH übernimmt ausdrücklich Teile der Dienstumgebung, darunter PATH.
-Dadurch können SYSTEM-Profilpfade und andere SSH-Installationen auftauchen.
-Der Helfer ändert weder den globalen PATH noch die Shell-Vorgabe. Für Skripte
-`command -v ssh`, `command -v powershell.exe` bzw. absolute Pfade verwenden;
-`command -v` ist in Bash eingebaut und benötigt kein zusätzliches `which`.
-Eine globale PATH-Bereinigung ist ohne Tests der Windows-Befehle und Werkzeuge
-nicht Teil dieser Änderung. Eigene Skripte können ihren PATH gezielt festlegen.
-
-Grundlagen: [AllowUsers und Match](https://man.openbsd.org/sshd_config#AllowUsers),
-[Robocopy-Backupmodus](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy).
+Syntax mit dem in INSTALLATION.md gezeigten PATH-Präfix prüfen und Dienst
+gezielt starten. Windows-Profile können geladen bleiben; vor Profilentfernung
+die Hinweise in TROUBLESHOOTING.md beachten. Kein erzwungenes Hive-Entladen.

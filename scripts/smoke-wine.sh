@@ -19,7 +19,7 @@ mkdir -p "$package/var/empty" "$package/var/run" "$package/tmp"
 timeout 120 wine "$package/bin/ssh.exe" -V
 timeout 30 wine "$package/usr/sbin/sshd.exe" -V
 timeout 30 wine "$package/bin/bash.exe" --noprofile --norc -c \
-    'test -f /usr/sbin/sshd.exe && printf "Cygwin shell: PASS\n"'
+    'export PATH=/usr/bin:/bin:/usr/sbin:$PATH; test -f /usr/sbin/sshd.exe && printf "Cygwin shell: PASS\n"'
 if [[ ! -f work/wine-smoke/host_ed25519 ]]; then
     timeout 30 wine "$package/bin/ssh-keygen.exe" -q -t ed25519 -N '' \
         -f 'Z:\project\work\wine-smoke\host_ed25519'
@@ -27,4 +27,7 @@ fi
 chmod 600 work/wine-smoke/host_ed25519
 timeout 30 wine "$package/usr/sbin/sshd.exe" -t \
     -f /etc/sshd_config -h /cygdrive/z/project/work/wine-smoke/host_ed25519
+timeout 30 wine "$package/bin/bash.exe" --noprofile --norc -c \
+    'PATH=/missing-windows-path; export PATH=/usr/bin:/bin:/usr/sbin:$PATH; /usr/sbin/sshd -t -f /etc/sshd_config -h /cygdrive/z/project/work/wine-smoke/host_ed25519'
+echo 'Bash syntax check with explicit Cygwin PATH: PASS'
 echo 'Wine smoke tests: PASS (supplemental; native Windows acceptance is separate)'

@@ -38,7 +38,7 @@ Reject { Update-UserAllowList "Include extra.conf`nAllowUsers Administrator`n" s
 Reject { Update-UserAllowList 'AllowUsers "name with space"' sshtest } 'Quoted pattern not refused'
 Check ((Update-UserAllowList "AllowUsers old#name # keep`n" sshtest) -ceq "AllowUsers old#name sshtest # keep`n") 'Hash inside an existing name was truncated'
 
-foreach ($scenario in @('success', 'stopped', 'no-restart', 'syntax-failure', 'mode-failure', 'start-failure', 'admin', 'existing-home', 'wrong-sid', 'wrong-home', 'foreign-service', 'copy-failure')) {
+foreach ($scenario in @('success', 'stopped', 'force-start', 'no-restart', 'conflicting-options', 'syntax-failure', 'mode-failure', 'start-failure', 'admin', 'existing-home', 'wrong-sid', 'wrong-home', 'foreign-service', 'copy-failure')) {
     $module = Import-Module $modulePath -Force -PassThru
     $root = Join-Path ([IO.Path]::GetTempPath()) ('openssh-user test-' + [guid]::NewGuid().ToString('N'))
     $null = [IO.Directory]::CreateDirectory((Join-Path $root 'etc'))
@@ -54,7 +54,7 @@ foreach ($scenario in @('success', 'stopped', 'no-restart', 'syntax-failure', 'm
         $script:scenario = $Scenario
         $script:root = $Root
         $script:actions = New-Object 'Collections.Generic.List[string]'
-        $script:running = $Scenario -ne 'stopped'
+        $script:running = $Scenario -notin @('stopped', 'force-start')
         $script:account = [pscustomobject]@{ Name = 'sshtest'; Enabled = $true; SID = [pscustomobject]@{ Value = 'S-1-5-21-1234-1001' } }
         function script:Assert-UserAdministrator { }
         function script:Get-LocalUser { return $script:account }
@@ -65,7 +65,7 @@ foreach ($scenario in @('success', 'stopped', 'no-restart', 'syntax-failure', 'm
         function script:Get-CimInstance {
             $path = '"' + (Join-Path $script:root 'bin/cygrunsrv.exe') + '"'
             if ($script:scenario -eq 'foreign-service') { $path = 'foreign-service.exe' }
-            return [pscustomobject]@{ PathName = $path; StartName = 'LocalSystem'; State = $(if ($script:scenario -eq 'stopped') { 'Stopped' } else { 'Running' }) }
+            return [pscustomobject]@{ PathName = $path; StartName = 'LocalSystem'; State = $(if ($script:scenario -in @('stopped', 'force-start')) { 'Stopped' } else { 'Running' }) }
         }
         function script:Stop-Service { $script:actions.Add('stop'); $script:running = $false }
         function script:Start-Service {
@@ -89,7 +89,8 @@ foreach ($scenario in @('success', 'stopped', 'no-restart', 'syntax-failure', 'm
                     if ($script:scenario -eq 'wrong-home') { $userHome = '/cygdrive/c/Users/sshtest' }
                     return 'sshtest:*:197609:197121:U-TEST+sshtest,' + $sid + ':' + $userHome + ':/bin/bash'
                 }
-                if ($Arguments -contains '/usr/sbin/sshd -t') {
+                if ($Arguments -contains '-c') {
+                    if ($Arguments[-1] -cne 'export PATH=/usr/bin:/bin:/usr/sbin:$PATH; /usr/sbin/sshd -t') { throw 'Missing explicit Cygwin PATH (simulated exit 127)' }
                     $script:actions.Add('syntax')
                     if ($script:scenario -eq 'syntax-failure') { throw 'Simulated syntax failure' }
                 }
@@ -105,15 +106,15 @@ foreach ($scenario in @('success', 'stopped', 'no-restart', 'syntax-failure', 'm
     } $scenario $root
     try {
         $failed = $false
-        try { Install-OpenSshUser -Root $root -Name sshtest -PublicKeyFile $pub -NoRestart:($scenario -eq 'no-restart') } catch { $failed = $true }
+        try { Install-OpenSshUser -Root $root -Name sshtest -PublicKeyFile $pub -NoRestart:($scenario -in @('no-restart', 'conflicting-options')) -Start:($scenario -in @('force-start', 'conflicting-options')) } catch { $failed = $true }
         $actions = @(& $module { $script:actions.ToArray() })
-        if ($scenario -in @('success', 'stopped', 'no-restart')) {
+        if ($scenario -in @('success', 'stopped', 'force-start', 'no-restart')) {
             Check (-not $failed) "$scenario failed"
             Check ([IO.File]::ReadAllText($activeConfig).Contains('Administrator sshtest')) 'AllowUsers not written'
             Check ([IO.File]::ReadAllText((Join-Path $root 'home/sshtest/.ssh/authorized_keys')) -ceq "ssh-ed25519 AAAA test`n") 'Key content differs'
             Check (@($actions | Where-Object { $_ -eq 'owner' }).Count -eq 3) 'Ownership was not limited to 3 paths'
-            Check (($actions -contains 'start') -eq ($scenario -eq 'success')) 'Incorrect start behavior'
-            Check (($actions -contains 'stop') -eq ($scenario -ne 'stopped')) 'Incorrect stop behavior'
+            Check (($actions -contains 'start') -eq ($scenario -in @('success', 'force-start'))) 'Incorrect start behavior'
+            Check (($actions -contains 'stop') -eq ($scenario -notin @('stopped', 'force-start'))) 'Incorrect stop behavior'
         } else {
             Check $failed "Expected refusal for $scenario"
             if ($scenario -eq 'start-failure') {

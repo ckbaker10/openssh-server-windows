@@ -97,8 +97,9 @@ function Assert-UserAdministrator {
 
 function Install-OpenSshUser {
     [CmdletBinding()]
-    param([string]$Root, [string]$Name, [string]$PublicKeyFile, [string]$ServiceName = 'openssh-cygwin', [switch]$NoRestart)
+    param([string]$Root, [string]$Name, [string]$PublicKeyFile, [string]$ServiceName = 'openssh-cygwin', [switch]$NoRestart, [switch]$Start)
     $ErrorActionPreference = 'Stop'
+    if ($Start -and $NoRestart) { throw '-Start and -NoRestart cannot be combined.' }
     Assert-UserAdministrator
     Assert-UserName $Name
     if ($ServiceName -notmatch '^[A-Za-z0-9_.-]+$') { throw 'Invalid service name.' }
@@ -162,7 +163,7 @@ function Install-OpenSshUser {
             Copy-UserBackupFile -Source $proposed -Destination (Join-Path $Root 'etc') -FileName 'sshd_config'
             if ((Get-Acl -LiteralPath $config).Sddl -cne $sddl) { throw 'Configuration owner or ACL changed unexpectedly.' }
         }
-        $null = Invoke-UserTool -File $bash -Arguments @('--noprofile', '--norc', '-c', '/usr/sbin/sshd -t')
+        $null = Invoke-UserTool -File $bash -Arguments @('--noprofile', '--norc', '-c', 'export PATH=/usr/bin:/bin:/usr/sbin:$PATH; /usr/sbin/sshd -t')
         $sshDir = Join-Path $userHome '.ssh'
         $null = [IO.Directory]::CreateDirectory($sshDir)
         $authorized = Join-Path $sshDir 'authorized_keys'
@@ -171,9 +172,14 @@ function Install-OpenSshUser {
             $null = Invoke-UserTool -File "$env:SystemRoot\System32\icacls.exe" -Arguments @($path, '/setowner', ('*' + $account.SID.Value))
         }
         $null = Invoke-UserTool -File $bash -Arguments @('--noprofile', '--norc', '/install-user.sh', 'configure', $Name, $fields[2])
-        if ($wasRunning -and -not $NoRestart) { Start-Service -Name $ServiceName -ErrorAction Stop }
+        $shouldStart = $Start -or ($wasRunning -and -not $NoRestart)
+        if ($shouldStart) {
+            Start-Service -Name $ServiceName -ErrorAction Stop
+            (Get-Service -Name $ServiceName).WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
+        }
         Write-Host "Prepared non-administrator account: $Name; Cygwin home: /home/$Name"
-        if (-not $wasRunning -or $NoRestart) { Write-Host 'The selected service remains stopped. Start it after reviewing the setup.' }
+        if ($shouldStart) { Write-Host "Service '$ServiceName': RUNNING." }
+        else { Write-Host "Service '$ServiceName': STOPPED. Run Start-Service -Name '$ServiceName' after reviewing the setup, or use -Start on a successful setup run." }
     } catch {
         $failure = $_.Exception.Message
         if ($mutating) {

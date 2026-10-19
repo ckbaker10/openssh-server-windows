@@ -193,6 +193,8 @@ def main():
         (output / directory).mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / 'docs' / 'windows-installation.md', output / 'INSTALLATION.md')
     shutil.copy2(ROOT / 'docs' / 'nonadmin-users.md', output / 'NONADMIN-USERS.md')
+    shutil.copy2(ROOT / 'docs' / 'troubleshooting.md', output / 'TROUBLESHOOTING.md')
+    shutil.copy2(ROOT / 'COMPILE.md', output / 'COMPILE.md')
     shutil.copy2(ROOT / 'build' / 'inputs.lock.json', output / 'inputs.lock.json')
     duplicates = deduplicate_windows_files(output)
     validate_windows_paths(str(p.relative_to(output)) for p in output.rglob('*'))

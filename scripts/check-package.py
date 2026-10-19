@@ -58,5 +58,7 @@ for name in ['install-server.sh', 'open-shell.sh', 'install-user.sh']:
     assert b'\r' not in (root / name).read_bytes()
 for name in ['install-user.cmd', 'install-user.ps1', 'user-setup.psm1']:
     assert (root / name).is_file(), name
+for name in ['INSTALLATION.md', 'NONADMIN-USERS.md', 'TROUBLESHOOTING.md', 'COMPILE.md']:
+    assert (root / name).is_file(), name
 assert b'\r\n' in (root / 'install-user.cmd').read_bytes()
 print('ZIP CRC, Windows paths, no manuals, complete manifest, hashes, PE imports, configuration and key absence: PASS')
