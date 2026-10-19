@@ -1,5 +1,8 @@
 # OpenSSH unter Linux für Windows bauen
 
+Historischer Stand vor der Umsetzung. Der erfolgreiche Cross-Build ist im
+[Buildbericht](build-validation.md) beschrieben; Einstieg und Buildbefehle stehen in der [README](../README.md).
+
 Stand: 19. Oktober 2026. Vorgaben: Linux als Buildsystem, kein Microsoft-SDK, modernes Windows; Cygwin darf als Laufzeit mitgeliefert werden. Architektur zunächst Windows x86_64; ARM64 wurde nicht untersucht.
 
 **Empfehlung: aktuelles OpenSSH Portable für das Cygwin-Ziel crosskompilieren und mit einer passenden Cygwin-Laufzeit ausliefern.** Dafür gibt es eine konkrete Linux-Toolchain als Ausgangspunkt. Ein erfolgreicher Build und Funktionstest von OpenSSH mit dieser Toolchain wurde in dieser Recherche noch nicht durchgeführt. Die Kombination ist technisch plausibel und durch die getrennt vorhandenen Bausteine gestützt, aber noch kein verifiziertes Buildrezept.

@@ -1,0 +1,11 @@
+FROM registry.fedoraproject.org/fedora@sha256:291ed4c06d5435a92d05ad622c9717afde6911e96d335e02919336eed0c8ae03
+
+# Package versions and the final image ID are recorded in every build manifest.
+# hadolint ignore=DL3041
+RUN dnf -y install dnf5-plugins \
+    && dnf -y copr enable yselkowitz/cygwin \
+    && dnf -y install cygwin64-gcc-13.4.0-1.fc43 cygwin64-binutils-2.45.1-1.fc43 \
+        gcc make perl python3 curl tar xz zstd patch diffutils file zip findutils \
+    && dnf clean all
+
+WORKDIR /project

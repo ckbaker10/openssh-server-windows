@@ -1,0 +1,13 @@
+FROM localhost/openssh-server-windows-builder:10.6p1
+
+# Wine only provides supplemental smoke tests; Windows acceptance stays separate.
+# hadolint ignore=DL3041
+RUN dnf -y install wine-core openssh-clients \
+    && dnf clean all
+
+# Wine initialisation needs a display even for console-only tests.
+# hadolint ignore=DL3041
+RUN dnf -y install xorg-x11-server-Xvfb wine-ldap \
+    && dnf clean all
+
+WORKDIR /project
