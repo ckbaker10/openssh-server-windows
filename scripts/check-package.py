@@ -22,11 +22,15 @@ destination.mkdir()
 with zipfile.ZipFile(ROOT / 'dist' / (package.NAME + '.zip')) as archive:
     assert archive.testzip() is None
     assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in archive.namelist())
+    package.validate_windows_paths(archive.namelist())
     archive.extractall(destination)
 root = destination / package.NAME
 manifest = json.loads((root / 'build-manifest.json').read_text())
 assert manifest['openssh'] == '10.6p1'
 assert manifest['cygwin'] == '3.6.11-1'
+actual_files = {str(p.relative_to(root)) for p in root.rglob('*') if p.is_file()}
+assert actual_files == set(manifest['file_sha256']) | {'build-manifest.json'}, \
+    'Archive file list does not match manifest'
 for name, expected in manifest['file_sha256'].items():
     assert package.sha256(root / name) == expected, name
 assert package.verify_pe(root) == manifest['pe_imports']
@@ -36,4 +40,4 @@ assert 'Subsystem sftp internal-sftp' in config
 assert not list(root.rglob('ssh_host_*_key'))
 assert (root / 'bin' / 'ssh-host-config').is_file()
 assert (root / 'lib' / 'terminfo' / '78' / 'xterm').is_file()
-print('ZIP CRC, artifact checksums, file hashes, PE imports, configuration and key absence: PASS')
+print('ZIP CRC, Windows paths, no manuals, complete manifest, hashes, PE imports, configuration and key absence: PASS')

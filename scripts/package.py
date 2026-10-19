@@ -22,11 +22,49 @@ SYSTEM_DLLS = set('''advapi32 bcrypt cabinet cfgmgr32 comctl32 comdlg32 crypt32
     ntdll ole32 oleaut32 powrprof psapi rpcrt4 secur32 setupapi shell32 shlwapi
     user32 userenv version winmm winspool wintrust ws2_32 wtsapi32 normaliz
     ucrtbase authz winhttp wininet wldap32 dbghelp'''.split())
+MANUAL_DIRECTORIES = ('usr/share/man', 'usr/share/info', 'share/man', 'share/info')
+
+
+def validate_windows_paths(names):
+    seen = set()
+    for name in names:
+        parts = name.split('/')
+        for part in parts:
+            stem = part.partition('.')[0].rstrip(' ').upper()
+            if (part in ('', '.', '..') or part.endswith((' ', '.'))
+                    or any(ord(c) < 32 or c in '<>:"\\|?*' for c in part)
+                    or stem in ('CON', 'PRN', 'AUX', 'NUL')
+                    or re.fullmatch(r'(?:COM|LPT)[1-9¹²³]', stem)):
+                raise ValueError(f'Invalid Windows archive path: {name}')
+        lowered = name.casefold()
+        if lowered in seen:
+            raise ValueError(f'Duplicate Windows archive path: {name}')
+        seen.add(lowered)
+        if re.search(r'(^|/)share/(man|info)(/|$)', lowered):
+            raise ValueError(f'Manual pages must not be shipped: {name}')
 
 
 def sha256(path):
     with path.open('rb') as stream:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def deduplicate_windows_files(root):
+    seen = {}
+    omitted = []
+    for path in sorted(root.rglob('*')):
+        if not path.is_file():
+            continue
+        name = str(path.relative_to(root))
+        previous = seen.get(name.casefold())
+        if previous is not None:
+            if sha256(previous) != sha256(path):
+                raise ValueError(f'Conflicting Windows archive files: {previous} and {path}')
+            path.unlink()
+            omitted.append(name)
+        else:
+            seen[name.casefold()] = path
+    return omitted
 
 
 def normalize(root):
@@ -130,6 +168,10 @@ def main():
     shutil.copytree(WORK / 'runtime', output, symlinks=True)
     shutil.copytree(WORK / 'package', output, dirs_exist_ok=True, symlinks=True)
     normalize(output)
+    for relative in MANUAL_DIRECTORIES:
+        directory = output / relative
+        if directory.exists():
+            shutil.rmtree(directory)
     skipped = materialize_links(output)
     for name in ['sshd_config', 'install-server.sh', 'install-server.cmd']:
         dest = output / ('etc/sshd_config' if name == 'sshd_config' else name)
@@ -140,6 +182,9 @@ def main():
     for directory in ['var/empty', 'var/log', 'var/run', 'home', 'tmp']:
         (output / directory).mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / 'docs' / 'windows-installation.md', output / 'INSTALLATION.md')
+    shutil.copy2(ROOT / 'build' / 'inputs.lock.json', output / 'inputs.lock.json')
+    duplicates = deduplicate_windows_files(output)
+    validate_windows_paths(str(p.relative_to(output)) for p in output.rglob('*'))
     reports = verify_pe(output)
     lock = json.loads((ROOT / 'build' / 'inputs.lock.json').read_text())
     manifest = {
@@ -153,11 +198,12 @@ def main():
         'configure': (WORK / 'obj' / 'config.status').read_text().split('ac_cs_config=')[1].splitlines()[0],
         'inputs': json.loads((WORK / 'download-manifest.json').read_text()),
         'pe_imports': reports, 'omitted_optional_links': skipped,
+        'excluded_runtime_directories': MANUAL_DIRECTORIES,
+        'omitted_duplicate_files': duplicates,
         'file_sha256': {str(p.relative_to(output)): sha256(p)
                         for p in sorted(output.rglob('*')) if p.is_file()},
     }
     (output / 'build-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
-    shutil.copy2(ROOT / 'build' / 'inputs.lock.json', output / 'inputs.lock.json')
     # Keep the signed index and signature next to the exact source archives.
     sources = DIST / (NAME + '-sources.tar')
     with tarfile.open(sources, 'w') as archive:

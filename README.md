@@ -23,6 +23,9 @@ Ergebnisse:
 Das ZIP enthält zusätzlich `build-manifest.json` mit Dateihashes, DLL-Imports,
 Compiler- und RPM-Versionen sowie `inputs.lock.json` mit den festgehaltenen Eingaben.
 `work/` enthält die erzeugten Builddaten und wird wie `dist/` nicht eingecheckt.
+Das Windows-ZIP enthält keine Man- oder Info-Handbuchseiten. Alle Archivnamen
+werden auf Windows-Kompatibilität geprüft; das Manifest erfasst jede ausgelieferte
+Datei außer sich selbst. Lizenzhinweise und Installationsanleitung sind enthalten.
 
 ## Prüfen und installieren
 
@@ -32,6 +35,7 @@ podman run --rm --name openssh-server-windows-check \
   python3 scripts/check-package.py
 shellcheck -S warning scripts/*.sh packaging/*.sh
 hadolint build/Containerfile build/Containerfile.wine
+python3 -m unittest discover -s tests -v
 ```
 
 Der Cross-Build und die Prüfung des entpackten ZIPs sind erfolgreich. Die
@@ -69,6 +73,8 @@ podman run --rm --name openssh-server-windows-wine-smoke \
 
 Der Wine-Test setzt die vorherige ZIP-Prüfung voraus und ersetzt keine Windows-Abnahme.
 Details und Nachweise stehen im [Buildbericht](docs/build-validation.md).
+Die [Korrektur der Windows-Paketierung in Paketrevision 2](docs/release-v10.6p1-cygwin.2.md)
+entfernt Handbuchseiten und prüft die vollständige Dateiliste gegen das Manifest.
 Die ursprüngliche [Machbarkeitsrecherche](docs/openssh-windows-recherche-2026-10-19.md)
 beschreibt die Auswahl von OpenSSH mit Cygwin.
 

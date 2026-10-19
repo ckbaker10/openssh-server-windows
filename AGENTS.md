@@ -21,6 +21,10 @@ Versionen aus dem geprüften Kandidaten-/Lockstand ableiten; die ursprünglichen
 festen Versionsliterale bei Updates zusammenhängend anpassen oder ablösen.
 Artefakte und Rohdaten bleiben in den ignorierten Verzeichnissen `dist/` und `work/`.
 
+Windows-ZIPs ohne Man- und Info-Handbuchseiten ausliefern. Alle Archivpfade auf
+Windows-kompatible Namen prüfen und jede ausgelieferte Datei außer dem Manifest
+selbst mit ihrem Hash im Manifest erfassen. Lizenzhinweise und die Installationsanleitung mitliefern.
+
 ZIP-Prüfung, DLL-/Versionsnachweise und ergänzende Laufzeittests vor Veröffentlichung
 ausführen. Ohne belegte native Windows-Abnahme weiterhin Prereleases veröffentlichen
 und diese Grenze nennen. Keine bestehenden Release-Tags verschieben oder bereits
