@@ -16,6 +16,33 @@ It does not create Windows accounts or change groups or passwords.
 Account names may contain 1-20 ASCII letters, digits, `_`, `.` or `-`, must
 start with a letter or digit, and must not end with a dot. The helper does
 not support domain accounts or alternative home paths.
+For a local Administrator on a domain member, use the manual
+"Local administrator on a domain member" procedure in INSTALLATION.md.
+This helper does not provision administrators or resolve shared administrator
+homes on your behalf.
+
+### Domain-member limitation
+
+On the checked Windows 11 domain member, an enabled local non-administrator
+existed in Windows but `getent passwd sshuser` and `id sshuser` did not resolve
+it. The qualified `MACHINE+sshuser` lookup succeeded and identified its local
+SID and `/home/sshuser`. In this case the helper stopped during its Bash
+preflight with `bash.exe failed (exit 2)`. It did not create the Cygwin home or
+extend AllowUsers. Passing the qualified name to install-user.cmd is not a
+workaround: its input validation accepts only the documented local base name.
+
+Check both forms in the bundled shell before using the helper on a domain
+member. If only the qualified form resolves, use explicit manual SID/home/key
+review and the qualified Cygwin identity rather than changing NSS implicitly.
+The helper's automatic AllowUsers update is not established for this case.
+Manual preparation using the qualified local identity, its verified home,
+700/700/600 permissions and an explicit qualified AllowUsers entry was checked
+separately. The resulting account lacked the Administrators group and passed
+SCP/SFTP with matching roundtrip content. Use the key/owner procedure in
+INSTALLATION.md with the intended account and home substituted; keep an
+existing tested administrator in the allow-list. Use the qualified name for
+both SSH and transfer clients. This does not turn a failed helper run into a
+successful automatic setup.
 
 If needed, create the account through Windows first, for example:
 

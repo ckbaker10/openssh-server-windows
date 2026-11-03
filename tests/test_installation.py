@@ -94,9 +94,9 @@ class InstallerArguments(unittest.TestCase):
 class PackagedHelper(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        path = ROOT / 'work/zip-check/openssh-10.6p1-cygwin-x86_64/bin/ssh-host-config'
+        path = ROOT / 'work/zip-check/OpenSSH-Cygwin/bin/ssh-host-config'
         if not path.exists():
-            raise unittest.SkipTest('Run scripts/check-package.py first to test the delivered helper')
+            raise unittest.SkipTest('Run tests/check-package.py first to test the delivered helper')
         cls.helper = path.read_text()
 
     def function(self, name):

@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / 'work'
 DIST = ROOT / 'dist'
 NAME = 'openssh-10.6p1-cygwin-x86_64'
+ARCHIVE_ROOT = 'OpenSSH-Cygwin'
 OBJDUMP = 'x86_64-pc-cygwin-objdump'
 SYSTEM_DLLS = set('''advapi32 bcrypt cabinet cfgmgr32 comctl32 comdlg32 crypt32
     cryptbase dnsapi gdi32 iphlpapi kernel32 kernelbase mpr msvcrt ncrypt netapi32
@@ -23,6 +24,17 @@ SYSTEM_DLLS = set('''advapi32 bcrypt cabinet cfgmgr32 comctl32 comdlg32 crypt32
     user32 userenv version winmm winspool wintrust ws2_32 wtsapi32 normaliz
     ucrtbase authz winhttp wininet wldap32 dbghelp'''.split())
 MANUAL_DIRECTORIES = ('usr/share/man', 'usr/share/info', 'share/man', 'share/info')
+PROJECT_SOURCE_NAMES = ('scripts', 'packaging', 'build', 'patches', 'tests', 'docs',
+                        '.containerignore', '.gitattributes', '.gitignore',
+                        'README.md', 'COMPILE.md', 'TESTING.md')
+
+
+def project_source_files():
+    for name in PROJECT_SOURCE_NAMES:
+        path = ROOT / name
+        for item in ([path] if path.is_file() else sorted(path.rglob('*'))):
+            if item.is_file() and '__pycache__' not in item.parts:
+                yield item
 
 
 def validate_windows_paths(names):
@@ -232,10 +244,13 @@ def main():
         for path in sorted((WORK / 'metadata').glob('*')):
             archive.add(path, arcname='metadata/' + path.name)
         archive.add(ROOT / 'patches', arcname='patches')
+        # Keep validation tools reproducible without adding them to the runtime ZIP.
+        for item in project_source_files():
+            archive.add(item, arcname='project/' + str(item.relative_to(ROOT)))
     epoch = int(os.environ.get('SOURCE_DATE_EPOCH', '1791244800'))
     with zipfile.ZipFile(DIST / (NAME + '.zip'), 'w', zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(output.rglob('*')):
-            relative = NAME + '/' + str(path.relative_to(output))
+            relative = ARCHIVE_ROOT + '/' + str(path.relative_to(output))
             info = zipfile.ZipInfo(relative + ('/' if path.is_dir() else ''), time.gmtime(epoch)[:6])
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = (path.stat().st_mode & 0xFFFF) << 16

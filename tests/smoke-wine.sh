@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd /project
-package=/project/work/zip-check/openssh-10.6p1-cygwin-x86_64
+package=/project/work/zip-check/OpenSSH-Cygwin
 export WINEPREFIX=/project/work/wineprefix-xvfb
 export WINEARCH=win64 WINEDEBUG=-all
 export WINEDLLOVERRIDES='mscoree,mshtml='
 export DISPLAY=:99 XDG_RUNTIME_DIR=/tmp/openssh-wine-runtime
-export WINEPATH='Z:\usr\lib64\wine-wow64\wine\x86_64-windows;Z:\project\work\zip-check\openssh-10.6p1-cygwin-x86_64\bin'
+export WINEPATH='Z:\usr\lib64\wine-wow64\wine\x86_64-windows;Z:\project\work\zip-check\OpenSSH-Cygwin\bin'
 mkdir -p "$XDG_RUNTIME_DIR"
 chmod 700 "$XDG_RUNTIME_DIR"
 Xvfb "$DISPLAY" -screen 0 1024x768x24 > work/wine-xvfb.log 2>&1 &

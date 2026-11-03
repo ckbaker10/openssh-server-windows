@@ -1,5 +1,5 @@
 # Pure policy checks and orchestration with mocked Windows/native boundaries.
-param([string]$ModulePath = '/project/work/zip-check/openssh-10.6p1-cygwin-x86_64/user-setup.psm1')
+param([string]$ModulePath = '/project/work/zip-check/OpenSSH-Cygwin/user-setup.psm1')
 $ErrorActionPreference = 'Stop'
 Import-Module $modulePath -Force
 $checks = 0

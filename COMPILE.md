@@ -42,7 +42,9 @@ FIDO device access are disabled.
 | `dist/openssh-10.6p1-cygwin-x86_64-sources.tar` | Corresponding sources, signed package index and patches |
 | `dist/SHA256SUMS` | SHA-256 hashes of both archives |
 
-The ZIP contains a build manifest with file hashes, DLL imports, package and
+The versioned ZIP contains all installation files beneath `OpenSSH-Cygwin/`.
+Extract it into the desired parent directory; no folder renaming is needed.
+It contains a build manifest with file hashes, DLL imports, package and
 tool versions, plus `inputs.lock.json` and a separate payload SHA256SUMS with
 a PowerShell verifier. The manifest covers every file except itself.
 The payload checksum list excludes itself and the manifest. Man and Info pages
@@ -61,9 +63,9 @@ Run the ZIP check before tests that use the extracted package:
 ```sh
 podman run --rm --name openssh-server-windows-check \
   -v "$PWD:/project:Z" localhost/openssh-server-windows-builder:10.6p1 \
-  python3 scripts/check-package.py
+  python3 tests/check-package.py
 python3 -m unittest discover -s tests -v
-shellcheck -S warning scripts/*.sh packaging/*.sh
+shellcheck -S warning scripts/*.sh packaging/*.sh tests/*.sh
 hadolint build/Containerfile build/Containerfile.wine
 ```
 
@@ -89,7 +91,7 @@ podman build -f build/Containerfile.wine \
   -t localhost/openssh-server-windows-wine:10.6p1 .
 podman run --rm --name openssh-server-windows-wine-smoke \
   -v "$PWD:/project:Z" localhost/openssh-server-windows-wine:10.6p1 \
-  bash scripts/smoke-wine.sh
+  bash tests/smoke-wine.sh
 ```
 
 Wine checks versions, Bash, key generation and `sshd -t`, including an explicit
@@ -97,6 +99,11 @@ Cygwin PATH with a reduced initial PATH. Use a new test key for each candidate.
 Wine is a supplemental check; validate service operation, user switching, NTFS,
 reboots and real logins separately on Windows. Releases remain prereleases
 until that validation is complete.
+
+See TESTING.md in the source checkout (`project/TESTING.md` in the source
+archive) for the complete validation sequence and native Windows acceptance
+checks. Test scripts are under `tests/` and are included
+in the source archive under `project/`; they are excluded from the runtime ZIP.
 
 ## Update the inputs
 

@@ -13,9 +13,11 @@ Download the ZIP and SHA256SUMS from the same release. Compare the hash:
 Get-FileHash .\openssh-10.6p1-cygwin-x86_64.zip -Algorithm SHA256
 ```
 
-Extract to `C:\Program Files\OpenSSH-Cygwin`, renaming the outer ZIP directory
-if needed. `install-server.cmd` and `bin\cygwin1.dll` must be directly beneath
-that directory. Only Administrators and SYSTEM should be able to modify this
+The ZIP contains a single top-level `OpenSSH-Cygwin` directory. Extract into
+`C:\Program Files` to obtain `C:\Program Files\OpenSSH-Cygwin` without renaming.
+`install-server.cmd` and `bin\cygwin1.dll` must be directly beneath that
+directory; avoid an extra `OpenSSH-Cygwin\OpenSSH-Cygwin` level. Only
+Administrators and SYSTEM should be able to modify this
 installation tree. Then verify it in PowerShell:
 
 ```powershell
@@ -167,6 +169,56 @@ mismatch; configure domain/qualified accounts and alternative layouts manually.
 This prevents an ambiguous name from provisioning the wrong identity.
 [Cygwin account and home settings](https://cygwin.com/cygwin-ug-net/ntsec.html).
 
+### Local administrator on a domain member
+
+This procedure was checked on a Windows 11 domain member with this Cygwin
+build. Windows Server 2022 behavior still needs separate validation.
+In an administrative bundled Bash session, inspect both identities first:
+
+```bash
+export PATH=/usr/bin:/bin:/usr/sbin:$PATH
+getent passwd Administrator
+getent passwd 'MACHINE+Administrator'
+id 'MACHINE+Administrator'
+```
+
+Replace MACHINE with the computer name. Confirm the SID belongs to the local
+computer, record the local UID, and use the home returned by getent. With the
+default NSS setting, both records can show `/home/Administrator`; a directory
+name does not establish which identity owns it. Stop if this home contains
+another account's data. Back it up with owners and ACLs before any reassignment.
+Do not recursively assign an existing shared home without reviewing its contents.
+
+For a home deliberately assigned to the local account, install only its public
+key and set ownership to the **local** UID, then permissions to 700/700/600:
+
+```bash
+mkdir -p /home/Administrator/.ssh
+cat >> /home/Administrator/.ssh/authorized_keys <<'KEY'
+ssh-ed25519 AAAA...replace_with_your_own_public_key
+KEY
+chown -R "$(id -u 'MACHINE+Administrator')" /home/Administrator
+chmod 700 /home/Administrator /home/Administrator/.ssh
+chmod 600 /home/Administrator/.ssh/authorized_keys
+stat -c '%u %a %n' /home/Administrator /home/Administrator/.ssh /home/Administrator/.ssh/authorized_keys
+```
+
+Keep StrictModes enabled. Verify numeric ownership rather than guessing from
+the displayed primary group. Test the explicit account from a second client:
+
+```bash
+ssh -p 2222 -l 'MACHINE+Administrator' server.example id
+```
+
+Use the same exact Cygwin account name in AllowUsers. An unqualified
+Administrator selected the domain identity in the checked case, and could
+not use the local account's key file. The server logged a bad ownership/modes
+rejection. `Permission denied (publickey)` also occurred for a nonexistent
+account, so it does not establish that a username exists. See
+TROUBLESHOOTING.md for the reported connection-close variation and its limits.
+The `/home/%D/%U` alternative above requires a planned, backed-up migration;
+do not change NSS as an incidental key-installation step.
+
 ## Check, start and connect
 
 Every Bash invocation without profiles needs the Cygwin PATH. Use single quotes
@@ -242,6 +294,133 @@ Restart-Service openssh-cygwin
 Backup mode needs elevated rights and available backup/restore privileges.
 Keep the backup until functionality has been checked. Do not overwrite later
 changes by restoring an old complete configuration.
+
+## Restricting who may log in
+
+Use exact Cygwin names returned by getent/id, including a local computer prefix
+when present. The `+` in `MACHINE+Administrator` is literal and needs no escape.
+For example, to keep only the local administrator:
+
+```text
+AllowUsers MACHINE+Administrator
+```
+
+To admit a domain account as well, resolve its name first. If getent identifies
+it as `sshuser`, the checked multiple-directive form is:
+
+```text
+AllowUsers MACHINE+Administrator
+AllowUsers sshuser
+```
+
+Replace both names with the actual passwd record names. A primary-domain user
+may have an unqualified name; do not invent a domain prefix. Multiple global
+AllowUsers directives append to the same list. Avoid a leftover broad pattern
+which would admit an account you intended to exclude. DenyUsers, group rules,
+Match blocks and other authentication requirements still need review.
+
+Use the protected configuration workflow above. Keep an independent console
+or management connection available, retain the original configuration, and
+leave the current SSH session open where possible. A service restart can end
+that session, so it cannot be your only recovery route. Run `sshd -t`, restart
+the selected service, and test a **new** SSH connection before closing the
+original session. If the test fails, use the independent console to restore
+the protected backup with Robocopy /B /COPY:DAT, validate again and restart.
+Automatic timed rollback tasks have not been validated by this procedure.
+
+Test an admitted account and a deliberately unlisted account with a separately
+verified valid key. Inspect `var\log\sshd.log` for the policy rejection.
+An unlisted domain account with a valid key was rejected while the listed
+local administrator continued to log in. TCP and SSH negotiation still occur;
+AllowUsers is an authentication restriction, not a network connection filter.
+After using install-user.cmd, inspect the global list and test the exact Cygwin
+identity again; see NONADMIN-USERS.md for helper limitations.
+
+### Limit SSH authentication by source address
+
+The following IPv4 forms were checked with this Cygwin build. In the first
+form, attach the address to the **exact** Cygwin username:
+
+```text
+UseDNS no
+AllowUsers MACHINE+Administrator@192.0.2.10
+```
+
+CIDR and alternatives also worked, for example:
+
+```text
+AllowUsers MACHINE+Administrator@192.0.2.10 MACHINE+Administrator@198.51.100.0/24
+```
+
+These are alternatives, not cumulative requirements. A separate unrestricted
+`AllowUsers MACHINE+Administrator` entry admitted the account despite another
+address-restricted entry. Review the whole list rather than appending a
+restriction beside an existing unrestricted entry.
+
+The second form keeps the global user list and denies all users outside an
+address list. Put global settings before the first Match block and place this
+block at the end of sshd_config:
+
+```text
+AllowUsers MACHINE+Administrator
+Match Address *,!192.0.2.10,!198.51.100.0/24
+    DenyUsers *
+```
+
+Keep the leading `*` and the negated exceptions in the checked form. The listed source
+was admitted; a source matching the deny block received
+`Permission denied (publickey)`. The matching DenyUsers policy remained
+effective despite the global AllowUsers entry. Neither form filters TCP before
+the SSH exchange; check the authentication-policy reason in the server log.
+
+Literal IP matching worked with UseDNS set to both no and yes. These examples
+use numeric addresses; hostname-based access rules were not validated.
+Behind NAT or a jump host, choose the source address recorded by sshd rather
+than assuming it is the original client's address. NAT was used in the checks;
+jump-host behavior still needs separate validation.
+Use the same protected edit, syntax check, independent recovery connection
+and second-session tests as for the account list.
+
+### Windows Firewall as the first source filter
+
+The firewall can prevent the SSH exchange from reaching sshd. An sshd rule
+then provides an additional account/source restriction if a connection reaches
+the daemon. Retain an independent administrative connection before changing
+firewall rules; a second SSH session alone may also be blocked by the change.
+
+The checked port-based rule form is:
+
+```powershell
+New-NetFirewallRule -Name OpenSSH-Cygwin-In-TCP -DisplayName 'OpenSSH Cygwin' -Direction Inbound -Protocol TCP -LocalPort 2222 -RemoteAddress 192.0.2.10 -Action Allow
+```
+
+Replace the port and source with your intended values. A remote-address list
+was also checked, for example `-RemoteAddress 192.0.2.10,198.51.100.0/24`.
+Inspect enabled inbound allow rules in the **ActiveStore**, including their
+port/range, program and address filters. Review `OpenSSH-Server-In-TCP` and
+any custom or policy-delivered rules which cover the chosen port. Another
+broader allow rule can still admit traffic; adding a narrower allow rule does
+not remove that broader permission. Restrict or remove only rules you have
+identified and intend to change, preserving a recovery route and their
+previous settings.
+
+A rule tied to `%SystemRoot%\System32\OpenSSH\sshd.exe` did not admit this
+installation in the check. Changing the test rule's program filter to the
+actual `C:\Program Files\OpenSSH-Cygwin\usr\sbin\sshd.exe` admitted it again.
+Use the port-based rule or the exact installed Cygwin executable path. Moving
+the installation requires reviewing any program-based rule.
+
+Test a new allowed connection and an excluded source. In the checked setup,
+the excluded source timed out before receiving an SSH banner, while an sshd
+account/address denial returned `Permission denied (publickey)`. A timeout
+alone does not identify the cause: compare the effective rule/filter state,
+the running listener and an allowed-source connection. Firewall drop logging
+can provide additional evidence; enabling it was not part of these checks.
+
+Before closing the recovery connection, restore the saved rule scope if the
+allowed test fails and recheck a new connection. The test used an independent
+management path while SSH was blocked. Automatic scheduled rollback and
+different external clients/IPv6 were not validated; plan those separately.
 
 ## Logs and rotation
 
@@ -345,3 +524,6 @@ in TROUBLESHOOTING.md.
 References: [Cygwin permissions](https://cygwin.com/cygwin-ug-net/ntsec.html),
 [icacls](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/icacls),
 [Robocopy](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy).
+
+Access-rule references: [sshd_config(5)](https://man.openbsd.org/sshd_config.5),
+[New-NetFirewallRule](https://learn.microsoft.com/en-us/powershell/module/netsecurity/new-netfirewallrule).

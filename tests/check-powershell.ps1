@@ -1,6 +1,15 @@
 # Execute in the Linux PowerShell test container after check-package.py.
 $ErrorActionPreference = 'Stop'
-$package = '/project/work/zip-check/openssh-10.6p1-cygwin-x86_64'
+$sources = Get-ChildItem /project/packaging,/project/tests -File -Recurse |
+    Where-Object Extension -in '.ps1','.psm1'
+foreach ($source in $sources) {
+    $tokens = $null
+    $parseErrors = $null
+    [void][Management.Automation.Language.Parser]::ParseFile($source.FullName, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count) { throw ('PowerShell syntax error in ' + $source.Name + ': ' + ($parseErrors.Message -join '; ')) }
+}
+Write-Output ('PowerShell source syntax: PASS (' + $sources.Count + ' files)')
+$package = '/project/work/zip-check/OpenSSH-Cygwin'
 $verify = Join-Path $package 'verify-package.ps1'
 Push-Location ([IO.Path]::GetTempPath())
 try { & $verify } finally { Pop-Location }

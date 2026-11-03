@@ -5,6 +5,7 @@ import importlib.util
 import json
 from pathlib import Path
 import shutil
+import tarfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,10 +24,24 @@ with zipfile.ZipFile(ROOT / 'dist' / (package.NAME + '.zip')) as archive:
     assert archive.testzip() is None
     assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in archive.namelist())
     package.validate_windows_paths(n.rstrip('/') for n in archive.namelist())
+    assert {n.split('/')[0] for n in archive.namelist()} == {package.ARCHIVE_ROOT}
     for name in ['tmp', 'var/empty', 'var/log', 'var/run', 'home']:
-        assert package.NAME + '/' + name + '/' in archive.namelist(), name
+        assert package.ARCHIVE_ROOT + '/' + name + '/' in archive.namelist(), name
     archive.extractall(destination)
-root = destination / package.NAME
+root = destination / package.ARCHIVE_ROOT
+assert not (root / 'tests').exists()
+assert not (root / 'TESTING.md').exists()
+with tarfile.open(ROOT / 'dist' / (package.NAME + '-sources.tar')) as sources:
+    names = set(sources.getnames())
+    assert 'project/TESTING.md' in names
+    expected_tests = {str(p.relative_to(ROOT)) for p in (ROOT / 'tests').rglob('*')
+                      if p.is_file() and '__pycache__' not in p.parts}
+    assert {'project/' + n for n in expected_tests} <= names
+    for path in package.project_source_files():
+        name = 'project/' + str(path.relative_to(ROOT))
+        assert name in names, name
+        assert sources.extractfile(name).read() == path.read_bytes(), \
+            'Source archive differs from the checked source: ' + name
 manifest = json.loads((root / 'build-manifest.json').read_text())
 assert manifest['openssh'] == '10.6p1'
 assert manifest['cygwin'] == '3.6.11-1'

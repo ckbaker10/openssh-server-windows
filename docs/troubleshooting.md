@@ -29,6 +29,48 @@ Use `-Start` for a successful new setup attempt, or run
 `Start-Service openssh-cygwin` afterwards. An existing home is not overwritten,
 including after an earlier failed attempt.
 
+## Local and domain Administrator share a home
+
+With `db_home: /home/%U`, different Windows SIDs can resolve to the same home.
+On the checked domain member, Administrator resolved to the domain account;
+`MACHINE+Administrator` resolved to the local account. Inspect both passwd
+records and the local account's `id` output before assigning keys or owners.
+INSTALLATION.md describes the local administrator procedure.
+
+With the home and authorized_keys owned by the local UID, the qualified local
+login succeeded. The unqualified domain login was rejected with
+`Permission denied (publickey)` and this server diagnostic:
+
+```text
+Authentication refused: bad ownership or modes for file /home/Administrator/.ssh/authorized_keys
+```
+
+A nonexistent account also produced `Permission denied (publickey)`; the
+server identified it as an invalid user. Client authentication failure alone
+does not prove that an account exists. Check getent/id and the server log.
+
+A reported variation closes the connection when a key is offered for the
+unqualified Administrator. That abrupt-close variation was **not reproduced**
+on the checked Windows 11 member, and its cause remains unverified for Windows
+Server 2022. Do not infer the same cause from the client message alone. Collect
+the matching `var\log\sshd.log` section, the exact resolved account and numeric
+owners; correlate fork/seteuid or service failures with Windows events if present.
+Keep StrictModes enabled and do not change ownership of the installation tree.
+
+## User helper reports Bash exit 2 on a domain member
+
+An existing Windows local account may require a qualified Cygwin name even
+when its base name is not present in the domain. In the checked case,
+`getent passwd sshuser` returned exit 2 and `id sshuser` failed, while
+`getent passwd 'MACHINE+sshuser'` and the corresponding id lookup succeeded.
+The account was enabled and was not an administrator.
+
+install-user.cmd requests the unqualified name during preflight, so it failed
+before creating a home or changing AllowUsers. Inspect both lookups and the
+local Windows SID; do not remove SID checks, administrator checks or home
+protections to make setup continue. Qualified helper input is unsupported.
+See NONADMIN-USERS.md for the current limitation and manual account guidance.
+
 ## Intermittent fork errors or dropped connections
 
 `fork of unprivileged child failed` means that Cygwin could not create a child

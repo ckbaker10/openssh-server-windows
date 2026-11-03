@@ -1,0 +1,19 @@
+{
+  "client_name": "MACHINE",
+  "server_name": "DOMAIN-DC",
+  "domain_netbios": "DOMAIN",
+  "domain_admin_name": "Administrator",
+  "domain_test_user": "sshdomtest",
+  "create_domain_test_user": false,
+  "domain_dns": "example.test",
+  "client_url": "http://127.0.0.1:56985/wsman",
+  "server_url": "http://127.0.0.1:56986/wsman",
+  "ssh_host": "127.0.0.1",
+  "ssh_port": 57222,
+  "source_address": "192.0.2.10",
+  "source_cidr": "192.0.2.0/24",
+  "server_private_address": "192.0.2.20",
+  "client_private_address": "192.0.2.21",
+  "denied_source": "203.0.113.10",
+  "archive_url": "http://10.0.2.2:57380/openssh-10.6p1-cygwin-x86_64.zip"
+}

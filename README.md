@@ -14,7 +14,8 @@ remain prereleases while their changes await Windows validation.
 ## Install as an administrator
 
 Download the Windows ZIP and `SHA256SUMS` from [Releases](https://github.com/ckbaker10/openssh-server-windows/releases),
-compare the ZIP hash, and extract it to `C:\Program Files\OpenSSH-Cygwin`.
+compare the ZIP hash, and extract it into `C:\Program Files`. The ZIP already
+contains the `OpenSSH-Cygwin` folder.
 `install-server.cmd` must be directly inside that directory.
 Open **64-bit PowerShell as Administrator**:
 
@@ -76,3 +77,5 @@ see the [domain account guidance](docs/windows-installation.md#domain-members-an
 [COMPILE.md](COMPILE.md) covers the Linux cross-build with rootless Podman,
 inputs, checks and output archives.
 For known Cygwin limitations and diagnosis, see [troubleshooting](docs/troubleshooting.md).
+The reproducible checks and native Windows acceptance procedure are in
+[TESTING.md](TESTING.md); test scripts ship only in the source archive.
