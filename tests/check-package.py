@@ -44,7 +44,7 @@ with tarfile.open(ROOT / 'dist' / (package.NAME + '-sources.tar')) as sources:
             'Source archive differs from the checked source: ' + name
 manifest = json.loads((root / 'build-manifest.json').read_text())
 assert manifest['openssh'] == '10.6p1'
-assert manifest['cygwin'] == '3.6.11-1'
+assert manifest['cygwin'] == '3.6.12-1'
 actual_files = {str(p.relative_to(root)) for p in root.rglob('*') if p.is_file()}
 assert actual_files == set(manifest['file_sha256']) | {'build-manifest.json'}, \
     'Archive file list does not match manifest'

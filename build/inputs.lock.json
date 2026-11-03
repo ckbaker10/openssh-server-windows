@@ -1,9 +1,9 @@
 {
   "openssh": "10.6p1",
-  "cygwin": "3.6.11-1",
+  "cygwin": "3.6.12-1",
   "mirror": "https://mirrors.kernel.org/sourceware/cygwin/",
   "signing_key": "56405CF6FCC81574682A5D561A698DE9E2E56300",
-  "setup_sha256": "a34f7371e96f4b07e1e613f8ce2b8459e2d83da3b6c5ae60ed48283fa3e30afb",
+  "setup_sha256": "d74098ad7e22d66196737da5523d6c9236f6a32369931b4fb6df3b476aa6bdc7",
   "openssh_source": "src/release/openssh/openssh-10.6p1-1-src.tar.xz",
   "packages": {
     "bash": {
@@ -14,9 +14,9 @@
       "runtime": true
     },
     "ca-certificates": {
-      "version": "2026.2.90_v9.0.317-1",
-      "install": "noarch/release/ca-certificates/ca-certificates-2026.2.90_v9.0.317-1-noarch.tar.zst",
-      "source": "noarch/release/ca-certificates/ca-certificates-2026.2.90_v9.0.317-1-src.tar.zst",
+      "version": "2026.2.92_v9.0.319-1",
+      "install": "noarch/release/ca-certificates/ca-certificates-2026.2.92_v9.0.319-1-noarch.tar.zst",
+      "source": "src/release/ca-certificates/ca-certificates-2026.2.92_v9.0.319-1-src.tar.zst",
       "depends2": "bash, p11-kit, p11-kit-trust",
       "runtime": true
     },
@@ -49,16 +49,16 @@
       "runtime": true
     },
     "cygwin": {
-      "version": "3.6.11-1",
-      "install": "x86_64/release/cygwin/cygwin-3.6.11-1-x86_64.tar.xz",
-      "source": "src/release/cygwin/cygwin-3.6.11-1-src.tar.xz",
+      "version": "3.6.12-1",
+      "install": "x86_64/release/cygwin/cygwin-3.6.12-1-x86_64.tar.xz",
+      "source": "src/release/cygwin/cygwin-3.6.12-1-src.tar.xz",
       "depends2": "_windows ( >= 6.3 ), bash, libgcc1, libintl8, libzstd1, zlib0",
       "runtime": true
     },
     "cygwin-devel": {
-      "version": "3.6.11-1",
-      "install": "x86_64/release/cygwin/cygwin-devel/cygwin-devel-3.6.11-1-x86_64.tar.xz",
-      "source": "src/release/cygwin/cygwin-3.6.11-1-src.tar.xz",
+      "version": "3.6.12-1",
+      "install": "x86_64/release/cygwin/cygwin-devel/cygwin-devel-3.6.12-1-x86_64.tar.xz",
+      "source": "src/release/cygwin/cygwin-3.6.12-1-src.tar.xz",
       "runtime": false
     },
     "diffutils": {
@@ -305,16 +305,16 @@
       "runtime": true
     },
     "tzcode": {
-      "version": "2026e-1",
-      "install": "x86_64/release/tzcode/tzcode-2026e-1-x86_64.tar.xz",
-      "source": "src/release/tzcode/tzcode-2026e-1-src.tar.xz",
+      "version": "2026f-1",
+      "install": "x86_64/release/tzcode/tzcode-2026f-1-x86_64.tar.xz",
+      "source": "src/release/tzcode/tzcode-2026f-1-src.tar.xz",
       "depends2": "bash, cygwin, libintl8, tzdata",
       "runtime": true
     },
     "tzdata": {
-      "version": "2026e-1",
-      "install": "noarch/release/tzdata/tzdata-2026e-1-noarch.tar.xz",
-      "source": "src/release/tzdata/tzdata-2026e-1-src.tar.xz",
+      "version": "2026f-1",
+      "install": "noarch/release/tzdata/tzdata-2026f-1-noarch.tar.xz",
+      "source": "src/release/tzdata/tzdata-2026f-1-src.tar.xz",
       "runtime": true
     },
     "util-linux": {
@@ -341,14 +341,9 @@
   },
   "archives": [
     {
-      "path": "noarch/release/ca-certificates/ca-certificates-2026.2.90_v9.0.317-1-noarch.tar.zst",
-      "size": 915867,
-      "sha512": "d3a34f94f0b394df540c730e232836551cf9cb1793f35fa4de6d615a5373dd3d8e584feab3a32f1ca72b996d552a68333211588132a86cccaabe2f87091df17b"
-    },
-    {
-      "path": "noarch/release/ca-certificates/ca-certificates-2026.2.90_v9.0.317-1-src.tar.zst",
-      "size": 575212,
-      "sha512": "679bae01de8782dc3aa873723e3f1ccc0ea0bc64c9e3754527c6f1d16cbc6c7d336dbd3b0d2fb8b45c801d8b7aa10f9738107a8e9ccc9452a23286c62678bea8"
+      "path": "noarch/release/ca-certificates/ca-certificates-2026.2.92_v9.0.319-1-noarch.tar.zst",
+      "size": 927382,
+      "sha512": "b00a1236b5728a6722a14b6aa4c99560e51fee3b60c216f1634d294fb454ea935c2bbe9e208b16dc9b063dd2a2bfbb8e906f80a07526b1b05e7543bac87b1310"
     },
     {
       "path": "noarch/release/crypto-policies/crypto-policies-20190218-1-src.tar.xz",
@@ -361,9 +356,9 @@
       "sha512": "44d50ff08528df786eeb26ec1d312445ec92d77ecc9f448a3b741f7647e187f11eabdc0b38f8ab8de803e21d2e610f67eb44de7554f3fa83f6e8172e609b0054"
     },
     {
-      "path": "noarch/release/tzdata/tzdata-2026e-1-noarch.tar.xz",
-      "size": 185808,
-      "sha512": "3d85ba57adf847f84b257a49d20ab9ee041fab69cb8b0b7a61202fd208cfd69549bc192f192ceace0323c50a2af5b6163cdbfbc188c914465cca89ab4cccf4d1"
+      "path": "noarch/release/tzdata/tzdata-2026f-1-noarch.tar.xz",
+      "size": 186144,
+      "sha512": "581e9a9f9310081ec8357c3038b6822fdf68a4f96a89c0b64b5c74cae12fb1961b4ea3cbdf47754f5cf82e1cf31c532f3a7a81d66f82a6463b8fa9fd746dfa79"
     },
     {
       "path": "src/release/attr/attr-2.5.2-2-src.tar.xz",
@@ -371,14 +366,19 @@
       "sha512": "83ea7fe61d77ccf771d2ecceeed37543dfff4b381e2b08c180e91cce396336a2b8e97e404cf9b0062cdff4ff35678d1b8902d611c5c074019f172718179e3a18"
     },
     {
+      "path": "src/release/ca-certificates/ca-certificates-2026.2.92_v9.0.319-1-src.tar.zst",
+      "size": 581723,
+      "sha512": "d6875e1d88dcf6491b14ca97ecae84959285dc08ebce917155791147031e04e43e1e46fbb53e06f2e404e2c60371d7af86765fd34baaa096646e8513f0f4b935"
+    },
+    {
       "path": "src/release/cygrunsrv/cygrunsrv-1.65-1-src.tar.xz",
       "size": 51980,
       "sha512": "65e51c6f213bd4a0d935c708bc38641c2060e2ae5ec4d3d4097ee0d9ed7c0c7b2703ab44823529d308d4fe254c9b0c0c5b381ecb18284da0a0947d28889582fd"
     },
     {
-      "path": "src/release/cygwin/cygwin-3.6.11-1-src.tar.xz",
-      "size": 9316544,
-      "sha512": "0c90f92e714d69013cf9281647a75737952f44acca556959645a7a0669606e2c9caa8217abee667c795824ff6fbe711a020b75d8043818c828713570652bec32"
+      "path": "src/release/cygwin/cygwin-3.6.12-1-src.tar.xz",
+      "size": 9318356,
+      "sha512": "9d70312a931f06d1158e7e913a23fb4aec4bb5fce6c5b55caf274a6d63905248625beaf1391f2d4518fbf5099523fdab2aa26834651856f4693fbf8862027889"
     },
     {
       "path": "src/release/gawk/gawk-5.4.0-1-src.tar.xz",
@@ -426,14 +426,14 @@
       "sha512": "d559a06956119d26a0c275169434f40ffdb9f443504fce7cca8403e96c249cb4821a87ead8cddffec062824e6a5ceb0d2d148e13882afff28c614f09f49876ec"
     },
     {
-      "path": "src/release/tzcode/tzcode-2026e-1-src.tar.xz",
-      "size": 332896,
-      "sha512": "6c8d675c148e4b93e699a9cf6de9f45b7b349c42e5bdd3970aa7012aca9a6c1b99c5b9e024be0d45a2887dc3c1c4386183730edc4ed401eda2e2397cbaffd0ee"
+      "path": "src/release/tzcode/tzcode-2026f-1-src.tar.xz",
+      "size": 333788,
+      "sha512": "1ae49dde5f8764d6240a394ea114896b167b2139b9f8257a8e78b3ca0c837632de570007c0b1c0b72d786b2303ad874eabaffd28e0b5043c3b988a47bbc5875b"
     },
     {
-      "path": "src/release/tzdata/tzdata-2026e-1-src.tar.xz",
-      "size": 488592,
-      "sha512": "9fd3b91a7e0a21a20aa3ace3219bdc98538097143172253d2a46bb56263af0369262f4530823e6875ad775eb96ff1a312ed9ef8602f3fe427c61bb54de8a6875"
+      "path": "src/release/tzdata/tzdata-2026f-1-src.tar.xz",
+      "size": 490108,
+      "sha512": "07f7434111722244a1d088b760f05346a276591339b7b10f9f2494da80afe2a5f0657a1cb8fc936c16c5ad5d06c75df54fcb7613f6e3f743d81a4cd0b5267488"
     },
     {
       "path": "x86_64/release/attr/libattr1/libattr1-2.5.2-2-x86_64.tar.xz",
@@ -476,14 +476,14 @@
       "sha512": "b69e08367f5cd9df55e5de82aff1249838b93f1662649715076c2f28107b478b2fc12142adbba0a2b4ca403af5073dd33fc555d75fccbc358a9e088236d61663"
     },
     {
-      "path": "x86_64/release/cygwin/cygwin-3.6.11-1-x86_64.tar.xz",
-      "size": 1621088,
-      "sha512": "1c33f8396d78eca035106325c5b90ff1165a6b78839f16190ec00f025067306522a23a5ec1b99557974e471649104cd31dad68685d2a544c31fb4494297a744a"
+      "path": "x86_64/release/cygwin/cygwin-3.6.12-1-x86_64.tar.xz",
+      "size": 1621132,
+      "sha512": "c2ceaed3f6fb6c52c30c3fc06fe0ace4b5d9c452dc0a20fd31ffbeb46fd3f98cdea82136ff2feb6d889cb56731336808925f93b85bd9315f5fd544848a2bc582"
     },
     {
-      "path": "x86_64/release/cygwin/cygwin-devel/cygwin-devel-3.6.11-1-x86_64.tar.xz",
-      "size": 321428,
-      "sha512": "5772f9dbc93cb40ed831348db672026b48ae91e22c3431e6ece6a627cd0c7d742a0e8c24ba6b95f853f8c652f9ce7999267e39e294fb18bf821da9e7295f0876"
+      "path": "x86_64/release/cygwin/cygwin-devel/cygwin-devel-3.6.12-1-x86_64.tar.xz",
+      "size": 320264,
+      "sha512": "923b4b3215f4432a444d1e77170eaea4cbfb08b537942cc2df29f6137c7bc49543131fd09a6d49c874bf4b4dec06fb2b3f55b203df5842dbc81505181af4bf8a"
     },
     {
       "path": "x86_64/release/diffutils/diffutils-3.12-1-src.tar.xz",
@@ -701,9 +701,9 @@
       "sha512": "6ab08f70e1d0415c161f0a435ceae191367f8c9c2ccd61d11daad251acb269f63d5bc1f6899dc3ce49028c65b55bf233c1fec89a137092e2dc7beaf3bdebdcaf"
     },
     {
-      "path": "x86_64/release/tzcode/tzcode-2026e-1-x86_64.tar.xz",
-      "size": 187756,
-      "sha512": "0c939b23a245bb0ca90f9ae14ef4bce6c73d9213d86ec09651c7463fb18bff9c3a04d35d84886bddedf7f76a01b87f112c737df7055eb12370429c93afb10c72"
+      "path": "x86_64/release/tzcode/tzcode-2026f-1-x86_64.tar.xz",
+      "size": 187836,
+      "sha512": "fa4bb1117c7faa0efc23a69a2576956c831943c71e4cbf593c992840e1770cbffbc4011cb0269e22d560f960ff2eb8bd86e5d54690f2901c4d860387cf102d5b"
     },
     {
       "path": "x86_64/release/util-linux/libblkid1/libblkid1-2.40.2-2.tar.xz",
