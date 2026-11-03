@@ -171,6 +171,51 @@ This prevents an ambiguous name from provisioning the wrong identity.
 
 ### Local administrator on a domain member
 
+If the bundled shell already runs as the intended account, resolve its numeric
+UID instead of guessing a Windows or Cygwin name:
+
+```bash
+export PATH=/usr/bin:/bin:/usr/sbin:$PATH
+id -un
+getent passwd "$(id -u)"
+```
+
+This identifies the shell's current account, which may be a domain account.
+Elevation alone does not select the local built-in administrator.
+
+To select the **local built-in administrator** from another administrative
+account, use elevated 64-bit PowerShell in the installation directory:
+
+```powershell
+$ErrorActionPreference = 'Stop'
+if ((Get-CimInstance Win32_ComputerSystem).DomainRole -ge 4) {
+    throw 'A domain controller has no local SAM administrator account'
+}
+$Local = @(Get-LocalUser | Where-Object { $_.SID.Value -match '-500$' })
+if ($Local.Count -ne 1) { throw 'Expected one local built-in administrator' }
+$Name = $env:COMPUTERNAME + '+' + $Local[0].Name
+$Record = & .\bin\getent.exe passwd $Name
+if ($LASTEXITCODE -ne 0) { throw 'Cygwin account lookup failed' }
+$Fields = $Record -split ':'
+if ($Fields.Count -ne 7 -or ($Fields[4] -split ',')[-1] -ne $Local[0].SID.Value) {
+    throw 'Cygwin account SID does not match the selected Windows account'
+}
+[pscustomobject]@{
+    Login = $Fields[0]; UID = $Fields[2]; Home = $Fields[5]
+    SID = $Local[0].SID.Value; Enabled = $Local[0].Enabled
+}
+```
+
+This discovers the computer prefix and the account's current name, including
+renamed built-in administrators, and checks the complete SID rather than only
+the name. It does not enable an account or change keys, homes or permissions.
+Use the returned Login in AllowUsers and `ssh -l`, and review the returned Home
+for collisions before installing a key. A successful lookup is not a successful
+SSH login; disabled accounts remain disabled. This selection is specifically
+for the built-in account, not every member of the Administrators group.
+
+For manual comparison of the unqualified and local names:
+
 This procedure was checked on a Windows 11 domain member with this Cygwin
 build. Windows Server 2022 behavior still needs separate validation.
 In an administrative bundled Bash session, inspect both identities first:
