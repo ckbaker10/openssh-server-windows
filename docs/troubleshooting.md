@@ -1,5 +1,95 @@
 # Troubleshooting and Cygwin limitations
 
+## Connection timeout: check the service and listening port
+
+Run these checks **on the Windows SSH server**, in elevated 64-bit PowerShell.
+Use your actual service name if it differs from `openssh-cygwin`:
+
+```powershell
+Set-Location 'C:\Program Files\OpenSSH-Cygwin'
+Get-Service -Name openssh-cygwin
+sc.exe qc openssh-cygwin
+sc.exe queryex openssh-cygwin
+Get-NetTCPConnection -State Listen |
+    Where-Object { $_.LocalPort -in 22,2222 } |
+    Select-Object LocalAddress,LocalPort,OwningProcess
+```
+
+A missing service means this name is not registered. Check the name and
+installation result before running setup again. `Running` alone does not prove
+that SSH is listening. No listener rows means neither port is currently
+listening; a remote timeout alone cannot distinguish this from a firewall drop.
+Port 2222 is the setup example; a new configuration without `--port` uses 22.
+Existing configurations can use another port.
+
+Check the registered executable and arguments with `sc.exe qc` and identify
+the listener's process with `Get-Process -Id <OwningProcess>`. Another SSH
+installation may own port 22. Check `Port` and `ListenAddress` in
+`etc\sshd_config`, any included files, and service command-line overrides.
+For another port, repeat the listener query with that port. A listener bound
+only to `127.0.0.1` or `::1` cannot accept connections to the server's LAN
+address. Check the address family and interface as well as the port.
+
+If stopped, first check configuration and then start this service:
+
+```powershell
+.\bin\bash.exe --noprofile --norc -c 'export PATH=/usr/bin:/bin:/usr/sbin:$PATH; /usr/sbin/sshd -t'
+if ($LASTEXITCODE -ne 0) { throw 'Configuration check failed' }
+Start-Service -Name openssh-cygwin -ErrorAction Stop
+Get-Service -Name openssh-cygwin
+Get-NetTCPConnection -State Listen |
+    Where-Object { $_.LocalPort -in 22,2222 } |
+    Select-Object LocalAddress,LocalPort,OwningProcess
+```
+
+Run the checks separately and inspect errors before continuing. If configuration
+access is denied, follow [Cannot read SYSTEM-owned configuration](#cannot-read-system-owned-configuration)
+and the ownership checks in INSTALLATION.md. Do not loosen the installation
+tree's permissions. A successful interactive `sshd -t` does not prove that
+the service can start under SYSTEM.
+
+If startup fails, the service stops again, or no expected listener appears,
+collect the exit status and recent logs:
+
+```powershell
+sc.exe queryex openssh-cygwin
+Get-Content .\var\log\sshd.log -Tail 80
+Get-WinEvent -FilterHashtable @{
+    LogName = 'System'
+    ProviderName = 'Service Control Manager'
+    StartTime = (Get-Date).AddMinutes(-15)
+} -MaxEvents 50 | Select-Object TimeCreated,Id,LevelDisplayName,Message
+```
+
+Correlate events for this service with the attempted start time. Preserve the
+exact start error and relevant log lines; an absent log is also useful evidence.
+Share only redacted diagnostics and relevant configuration directives, never
+private host keys, credentials or an entire installation directory.
+
+Once the expected listener exists, test its actual bound address locally and
+then from the intended client. Replace `server.example` and port 2222 below
+with the server's LAN address or DNS name and the observed listening port:
+
+```powershell
+Test-NetConnection -ComputerName server.example -Port 2222
+```
+
+Check `TcpTestSucceeded`; ping success or failure does not establish SSH TCP
+reachability. If the local TCP test succeeds but the remote test fails, inspect
+Windows Defender Firewall with Advanced Security (`wf.msc`): the active network
+profile, enabled inbound TCP rules, local port, allowed remote addresses,
+program/service restrictions and blocking rules. Allow only the intended client
+sources on the observed port; keep the firewall enabled. Also check intervening
+network filters and the client's destination address. Reachable RDP or WinRM
+does not prove that the SSH port is reachable, and a TCP connection alone does
+not prove successful SSH authentication. Match the client's `Port` to the
+verified listener before changing jump-host settings.
+
+Command references: [Get-NetTCPConnection](https://learn.microsoft.com/en-us/powershell/module/nettcpip/get-nettcpconnection),
+[Test-NetConnection](https://learn.microsoft.com/en-us/powershell/module/nettcpip/test-netconnection),
+and [Get-WinEvent](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.diagnostics/get-winevent).
+These diagnostic steps require validation on the affected Windows host.
+
 ## Exit code 127 from Bash
 
 With --noprofile --norc, Bash inherits the translated Windows PATH. Add

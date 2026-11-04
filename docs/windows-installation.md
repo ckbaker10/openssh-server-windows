@@ -292,6 +292,7 @@ Get-Content .\var\log\sshd.log -Tail 10
 ```
 
 Allow the chosen TCP port through the firewall for the required sources.
+For timeouts, follow the [service and listening-port checks](troubleshooting.md#connection-timeout-check-the-service-and-listening-port).
 Before exposing any listening port, configure **AllowUsers** with the exact
 accounts you intend to admit, using the SYSTEM configuration procedure below.
 Without it, any otherwise eligible Cygwin account with an accepted key may log
