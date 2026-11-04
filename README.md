@@ -21,10 +21,15 @@ Open **64-bit PowerShell as Administrator**:
 
 ```powershell
 Set-Location 'C:\Program Files\OpenSSH-Cygwin'
-powershell.exe -NoProfile -File .\verify-package.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\verify-package.ps1
+if ($LASTEXITCODE -ne 0) { throw 'Package verification failed' }
 .\install-server.cmd --yes --name openssh-cygwin --port 2222
 .\open-shell.cmd
 ```
+
+The execution-policy override applies only to the verifier process. It does
+not change the saved user or machine policy. For enforced Group Policy,
+see the [installation guide](docs/windows-installation.md#extract-and-verify).
 
 In the Bash shell, add your own **public** key:
 

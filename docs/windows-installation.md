@@ -22,8 +22,22 @@ installation tree. Then verify it in PowerShell:
 
 ```powershell
 Set-Location 'C:\Program Files\OpenSSH-Cygwin'
-powershell.exe -NoProfile -File .\verify-package.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\verify-package.ps1
+if ($LASTEXITCODE -ne 0) { throw 'Package verification failed' }
 ```
+
+The verifier is unsigned. Without the process-specific `-ExecutionPolicy Bypass`,
+PowerShell can reject it with "not digitally signed", for example when the
+extracted script is marked as downloaded from the Internet. This option changes
+only the verifier process's policy; it does not change the saved user or machine
+policy or disable the verifier's hash checks.
+
+An execution policy enforced by Group Policy takes precedence over this option.
+If the script is still blocked, inspect `Get-ExecutionPolicy -List` and ask your
+administrator for an approved execution method when `MachinePolicy` or
+`UserPolicy` enforces signing. See Microsoft's
+[execution-policy documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies?view=powershell-5.1).
+Continue with setup only after verification succeeds.
 
 Specify `-Path 'C:\Program Files\OpenSSH-Cygwin'` explicitly if needed.
 The verifier reads SHA256SUMS without JSON. An empty list, missing files or
