@@ -90,6 +90,103 @@ Command references: [Get-NetTCPConnection](https://learn.microsoft.com/en-us/pow
 and [Get-WinEvent](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.diagnostics/get-winevent).
 These diagnostic steps require validation on the affected Windows host.
 
+### Inspect firewall profiles and rules
+
+On the server, inspect the effective profiles and the category of each network
+interface (DomainAuthenticated corresponds to the Domain firewall profile):
+
+```powershell
+Get-NetFirewallProfile -PolicyStore ActiveStore |
+    Select-Object Name,Enabled,DefaultInboundAction
+Get-NetConnectionProfile |
+    Select-Object InterfaceAlias,Name,NetworkCategory
+Get-NetFirewallPortFilter -PolicyStore ActiveStore -Protocol TCP |
+    Where-Object { $_.LocalPort -contains '2222' } |
+    Get-NetFirewallRule |
+    Select-Object Name,DisplayName,Enabled,Direction,Action,Profile
+```
+
+This last query finds filters explicitly listing 2222. An empty result does
+**not** prove the port is blocked: ranges, `Any` ports/protocols and
+application/service rules also need inspection in `wf.msc`. For candidate
+rules, inspect their address, application and service filters as well.
+`Enabled=True` identifies an enabled firewall profile; `DefaultInboundAction=Block`
+is the fallback without a matching exception. Explicit block rules can override
+allow rules. Domain policy can prevent local rules from taking effect.
+
+If an inbound exception is required and permitted by your policy, create it
+for the observed listening port and intended source only. This **changes the
+server firewall**. Replace the documentation address below with the client's
+source address as seen by the server, and select the required profile(s).
+This example assumes the Domain profile:
+
+```powershell
+New-NetFirewallRule -Name 'OpenSSH-Cygwin-2222-Client' -DisplayName 'OpenSSH Cygwin 2222 from client' -Direction Inbound -Protocol TCP -LocalPort 2222 -RemoteAddress 192.0.2.10 -Profile Domain -Action Allow
+Get-NetFirewallRule -PolicyStore ActiveStore -Name 'OpenSSH-Cygwin-2222-Client'
+```
+
+Check for an existing rule before creating one. Retest from that client;
+another source is outside this exception. Remove only this newly created rule
+if rolling back: `Remove-NetFirewallRule -Name 'OpenSSH-Cygwin-2222-Client'`.
+Keep the firewall enabled during diagnosis.
+See [Windows Firewall rule precedence](https://learn.microsoft.com/en-us/windows/security/operating-system-security/network-security/windows-firewall/rules),
+[port-filter queries](https://learn.microsoft.com/en-us/powershell/module/netsecurity/get-netfirewallportfilter)
+and [creating a scoped rule](https://learn.microsoft.com/en-us/powershell/module/netsecurity/new-netfirewallrule).
+
+### Local connection resets before authentication
+
+A local SSH reset or `Timeout before authentication [preauth]` needs server
+diagnostics even when remote TCP access also times out. The preauth marker
+identifies a stage, not a cause. Event 7034 records an unexpected service exit;
+it does not identify why it exited. Correlate timestamps and logs before
+attributing either symptom to firewall rules, keys or account permissions.
+
+For a controlled foreground run, use a maintenance window and keep an
+independent administrative session available. Record whether this service was
+running, then stop only this installation's service and wait for it to stop:
+
+```powershell
+Set-Location 'C:\Program Files\OpenSSH-Cygwin'
+Get-Service -Name openssh-cygwin
+Stop-Service -Name openssh-cygwin -ErrorAction Stop
+(Get-Service -Name openssh-cygwin).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
+Get-NetTCPConnection -State Listen |
+    Where-Object { $_.LocalPort -eq 2222 } |
+    Select-Object LocalAddress,LocalPort,OwningProcess
+```
+
+If the port is still occupied, identify its owner before proceeding; do not
+terminate an unrelated process. Use the actual port and configuration from
+the service registration. In the first console, run:
+
+```powershell
+.\bin\bash.exe --noprofile --norc -c 'export PATH=/usr/bin:/bin:/usr/sbin:$PATH; /usr/sbin/sshd -D -e -f /etc/sshd_config -p 2222'
+```
+
+In a second console, reproduce once using the packaged client and an intended
+account (replace `sshuser`):
+
+```powershell
+.\bin\ssh.exe -vvv -o ConnectTimeout=10 -p 2222 sshuser@127.0.0.1
+```
+
+Use loopback only if the listener includes it; otherwise use its bound local
+address. Stop the foreground daemon with Ctrl+C before restarting the service.
+For additional detail, repeat with `-D -d -e` instead of `-D -e`.
+**`-d` handles one connection and disables normal connection forking**, so it
+can hide a fork failure. Neither interactive run reproduces the LocalSystem
+token or full service environment. Permission or host-key access errors in
+this context do not justify changing ACLs. If it cannot read the SYSTEM-owned
+files, return to service logs and the documented configuration-access procedure.
+See the [sshd debug options](https://man.openbsd.org/sshd.8).
+
+After the foreground daemon exits, restore the previous service state. If it
+was running, use `Start-Service openssh-cygwin`, then repeat the service and
+listener checks above. Preserve the failure point and matching server/client
+diagnostics, redacting account names, addresses, key material and other private
+details before sharing. These foreground paths have not been validated here
+on native Windows.
+
 ## Exit code 127 from Bash
 
 With --noprofile --norc, Bash inherits the translated Windows PATH. Add
