@@ -87,7 +87,7 @@ def refresh():
     for name in sorted(runtime | set(DEVEL)):
         fields = packages[name][0]
         selected[name] = dict(fields, runtime=name in runtime)
-    openssh = next(p for p in packages['openssh'] if p['version'] == '10.6p1-1')
+    openssh = next(p for p in packages['openssh'] if p['version'] == '10.6p2-1')
     records = {}
 
     def record(spec):
@@ -100,7 +100,7 @@ def refresh():
         if fields.get('source'):
             fields['source'] = record(fields['source'])
     source = record(openssh['source'])
-    lock = {'openssh': '10.6p1', 'cygwin': selected['cygwin']['version'],
+    lock = {'openssh': '10.6p2', 'cygwin': selected['cygwin']['version'],
             'mirror': MIRROR, 'signing_key': KEY,
             'setup_sha256': digest(meta / 'setup.xz'),
             'openssh_source': source, 'packages': selected,

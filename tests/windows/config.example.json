@@ -15,5 +15,5 @@
   "server_private_address": "192.0.2.20",
   "client_private_address": "192.0.2.21",
   "denied_source": "203.0.113.10",
-  "archive_url": "http://10.0.2.2:57380/openssh-10.6p1-cygwin-x86_64.zip"
+  "archive_url": "http://10.0.2.2:57380/openssh-10.6p2-cygwin-x86_64.zip"
 }

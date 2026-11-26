@@ -38,8 +38,8 @@ FIDO device access are disabled.
 
 | File | Contents |
 | --- | --- |
-| `dist/openssh-10.6p1-cygwin-x86_64.zip` | Server, clients, runtime, helpers and guides |
-| `dist/openssh-10.6p1-cygwin-x86_64-sources.tar` | Corresponding sources, signed package index and patches |
+| `dist/openssh-10.6p2-cygwin-x86_64.zip` | Server, clients, runtime, helpers and guides |
+| `dist/openssh-10.6p2-cygwin-x86_64-sources.tar` | Corresponding sources, signed package index and patches |
 | `dist/SHA256SUMS` | SHA-256 hashes of both archives |
 
 The versioned ZIP contains all installation files beneath `OpenSSH-Cygwin/`.
@@ -62,7 +62,7 @@ Run the ZIP check before tests that use the extracted package:
 
 ```sh
 podman run --rm --name openssh-server-windows-check \
-  -v "$PWD:/project:Z" localhost/openssh-server-windows-builder:10.6p1 \
+  -v "$PWD:/project:Z" localhost/openssh-server-windows-builder:10.6p2 \
   python3 tests/check-package.py
 python3 -m unittest discover -s tests -v
 shellcheck -S warning scripts/*.sh packaging/*.sh tests/*.sh
@@ -88,9 +88,9 @@ handling, but do not replace execution on Windows PowerShell 5.1.
 
 ```sh
 podman build -f build/Containerfile.wine \
-  -t localhost/openssh-server-windows-wine:10.6p1 .
+  -t localhost/openssh-server-windows-wine:10.6p2 .
 podman run --rm --name openssh-server-windows-wine-smoke \
-  -v "$PWD:/project:Z" localhost/openssh-server-windows-wine:10.6p1 \
+  -v "$PWD:/project:Z" localhost/openssh-server-windows-wine:10.6p2 \
   bash tests/smoke-wine.sh
 ```
 

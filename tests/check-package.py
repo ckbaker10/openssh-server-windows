@@ -43,7 +43,7 @@ with tarfile.open(ROOT / 'dist' / (package.NAME + '-sources.tar')) as sources:
         assert sources.extractfile(name).read() == path.read_bytes(), \
             'Source archive differs from the checked source: ' + name
 manifest = json.loads((root / 'build-manifest.json').read_text())
-assert manifest['openssh'] == '10.6p1'
+assert manifest['openssh'] == '10.6p2'
 assert manifest['cygwin'] == '3.6.12-1'
 actual_files = {str(p.relative_to(root)) for p in root.rglob('*') if p.is_file()}
 assert actual_files == set(manifest['file_sha256']) | {'build-manifest.json'}, \

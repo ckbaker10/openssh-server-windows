@@ -18,7 +18,7 @@ host `date +%s` times, exit status and separate stdout/stderr logs. For example:
 
 ```sh
 python3 tests/evidence.py --output work/checks/regression \
-  --input dist/openssh-10.6p1-cygwin-x86_64.zip \
+  --input dist/openssh-10.6p2-cygwin-x86_64.zip \
   --tool-version "$(python3 --version)" -- python3 -m unittest discover -s tests -v
 ```
 
@@ -35,7 +35,7 @@ Run it before tests which exercise the packaged `ssh-host-config`:
 ```sh
 python3 scripts/inputs.py fetch
 podman run --rm --name openssh-server-windows-check \
-  -v "$PWD:/project:Z" localhost/openssh-server-windows-builder:10.6p1 \
+  -v "$PWD:/project:Z" localhost/openssh-server-windows-builder:10.6p2 \
   python3 tests/check-package.py
 python3 -m unittest discover -s tests -v
 shellcheck -S warning scripts/*.sh packaging/*.sh tests/*.sh
@@ -47,7 +47,7 @@ podman run --rm --name openssh-server-windows-user-check \
   -v "$PWD:/project:Z" mcr.microsoft.com/powershell:lts-ubuntu-22.04 \
   pwsh -NoProfile -File /project/tests/check-user-setup.ps1
 podman run --rm --name openssh-server-windows-wine-smoke \
-  -v "$PWD:/project:Z" localhost/openssh-server-windows-wine:10.6p1 \
+  -v "$PWD:/project:Z" localhost/openssh-server-windows-wine:10.6p2 \
   bash tests/smoke-wine.sh
 ```
 
@@ -272,8 +272,8 @@ changed afterwards, `compare-runtime.py` proves every other payload byte and
 the runtime file list stayed unchanged:
 
 ```sh
-python3 tests/compare-runtime.py work/windows-lab/tested-package-complete.zip dist/openssh-10.6p1-cygwin-x86_64.zip
-OPENSSH_TEST_NO_PROFILE=1 python tests/windows/verify-candidate.py dist/openssh-10.6p1-cygwin-x86_64.zip
+python3 tests/compare-runtime.py work/windows-lab/tested-package-complete.zip dist/openssh-10.6p2-cygwin-x86_64.zip
+OPENSSH_TEST_NO_PROFILE=1 python tests/windows/verify-candidate.py dist/openssh-10.6p2-cygwin-x86_64.zip
 ```
 
 The native final-candidate check downloads the configured archive URL, compares

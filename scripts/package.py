@@ -15,7 +15,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / 'work'
 DIST = ROOT / 'dist'
-NAME = 'openssh-10.6p1-cygwin-x86_64'
+NAME = 'openssh-10.6p2-cygwin-x86_64'
 ARCHIVE_ROOT = 'OpenSSH-Cygwin'
 OBJDUMP = 'x86_64-pc-cygwin-objdump'
 SYSTEM_DLLS = set('''advapi32 bcrypt cabinet cfgmgr32 comctl32 comdlg32 crypt32

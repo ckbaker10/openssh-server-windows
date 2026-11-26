@@ -1,10 +1,10 @@
 {
-  "openssh": "10.6p1",
+  "openssh": "10.6p2",
   "cygwin": "3.6.12-1",
   "mirror": "https://mirrors.kernel.org/sourceware/cygwin/",
   "signing_key": "56405CF6FCC81574682A5D561A698DE9E2E56300",
-  "setup_sha256": "d74098ad7e22d66196737da5523d6c9236f6a32369931b4fb6df3b476aa6bdc7",
-  "openssh_source": "src/release/openssh/openssh-10.6p1-1-src.tar.xz",
+  "setup_sha256": "87dd6db3064d398ce22803a4594c8090e97cd5acffba1cec9e384dfe72e00fcb",
+  "openssh_source": "src/release/openssh/openssh-10.6p2-1-src.tar.zst",
   "packages": {
     "bash": {
       "version": "5.2.21-1",
@@ -31,7 +31,7 @@
       "version": "20190218-1",
       "install": "noarch/release/crypto-policies/crypto-policies-20190218-1.tar.xz",
       "source": "noarch/release/crypto-policies/crypto-policies-20190218-1-src.tar.xz",
-      "depends2": "bash",
+      "depends2": "bash, coreutils",
       "runtime": true
     },
     "csih": {
@@ -62,9 +62,9 @@
       "runtime": false
     },
     "diffutils": {
-      "version": "3.12-1",
-      "install": "x86_64/release/diffutils/diffutils-3.12-1-x86_64.tar.xz",
-      "source": "x86_64/release/diffutils/diffutils-3.12-1-src.tar.xz",
+      "version": "3.12-2",
+      "install": "x86_64/release/diffutils/diffutils-3.12-2-x86_64.tar.xz",
+      "source": "src/release/diffutils/diffutils-3.12-2-src.tar.xz",
       "depends2": "cygwin, libintl8",
       "runtime": true
     },
@@ -174,9 +174,9 @@
       "runtime": true
     },
     "libintl8": {
-      "version": "0.22.5-1",
-      "install": "x86_64/release/gettext/libintl8/libintl8-0.22.5-1.tar.xz",
-      "source": "x86_64/release/gettext/gettext-0.22.5-1-src.tar.xz",
+      "version": "0.26-1",
+      "install": "x86_64/release/gettext/libintl8/libintl8-0.26-1-x86_64.tar.xz",
+      "source": "x86_64/release/gettext/gettext-0.26-1-src.tar.xz",
       "depends2": "cygwin, libiconv2",
       "runtime": true
     },
@@ -202,9 +202,9 @@
       "runtime": true
     },
     "libp11-kit0": {
-      "version": "0.26.5-1",
-      "install": "x86_64/release/p11-kit/libp11-kit0/libp11-kit0-0.26.5-1-x86_64.tar.xz",
-      "source": "x86_64/release/p11-kit/p11-kit-0.26.5-1-src.tar.xz",
+      "version": "0.26.6-1",
+      "install": "x86_64/release/p11-kit/libp11-kit0/libp11-kit0-0.26.6-1-x86_64.tar.xz",
+      "source": "src/release/p11-kit/p11-kit-0.26.6-1-src.tar.xz",
       "depends2": "cygwin, libffi8, libgcc1, libintl8",
       "runtime": true
     },
@@ -271,23 +271,23 @@
       "runtime": true
     },
     "libzstd1": {
-      "version": "1.5.7-1",
-      "install": "x86_64/release/zstd/libzstd1/libzstd1-1.5.7-1.tar.zst",
-      "source": "x86_64/release/zstd/zstd-1.5.7-1-src.tar.zst",
+      "version": "1.6.0-1",
+      "install": "x86_64/release/zstd/libzstd1/libzstd1-1.6.0-1-x86_64.tar.zst",
+      "source": "src/release/zstd/zstd-1.6.0-1-src.tar.zst",
       "depends2": "cygwin",
       "runtime": true
     },
     "p11-kit": {
-      "version": "0.26.5-1",
-      "install": "x86_64/release/p11-kit/p11-kit-0.26.5-1-x86_64.tar.xz",
-      "source": "x86_64/release/p11-kit/p11-kit-0.26.5-1-src.tar.xz",
+      "version": "0.26.6-1",
+      "install": "x86_64/release/p11-kit/p11-kit-0.26.6-1-x86_64.tar.xz",
+      "source": "src/release/p11-kit/p11-kit-0.26.6-1-src.tar.xz",
       "depends2": "cygwin, libintl8, libp11-kit0, libtasn1_6",
       "runtime": true
     },
     "p11-kit-trust": {
-      "version": "0.26.5-1",
-      "install": "x86_64/release/p11-kit/p11-kit-trust/p11-kit-trust-0.26.5-1-x86_64.tar.xz",
-      "source": "x86_64/release/p11-kit/p11-kit-0.26.5-1-src.tar.xz",
+      "version": "0.26.6-1",
+      "install": "x86_64/release/p11-kit/p11-kit-trust/p11-kit-trust-0.26.6-1-x86_64.tar.xz",
+      "source": "src/release/p11-kit/p11-kit-0.26.6-1-src.tar.xz",
       "depends2": "cygwin, libgcc1, libintl8, libp11-kit0, libtasn1_6",
       "runtime": true
     },
@@ -325,16 +325,16 @@
       "runtime": true
     },
     "zlib-devel": {
-      "version": "1.3.2-1",
-      "install": "x86_64/release/zlib/zlib-devel/zlib-devel-1.3.2-1-x86_64.tar.zst",
-      "source": "x86_64/release/zlib/zlib-1.3.2-1-src.tar.zst",
+      "version": "1.4-1",
+      "install": "x86_64/release/zlib/zlib-devel/zlib-devel-1.4-1-x86_64.tar.zst",
+      "source": "src/release/zlib/zlib-1.4-1-src.tar.zst",
       "depends2": "pkg-config, zlib0",
       "runtime": false
     },
     "zlib0": {
-      "version": "1.3.2-1",
-      "install": "x86_64/release/zlib/zlib0/zlib0-1.3.2-1-x86_64.tar.zst",
-      "source": "x86_64/release/zlib/zlib-1.3.2-1-src.tar.zst",
+      "version": "1.4-1",
+      "install": "x86_64/release/zlib/zlib0/zlib0-1.4-1-x86_64.tar.zst",
+      "source": "src/release/zlib/zlib-1.4-1-src.tar.zst",
       "depends2": "cygwin",
       "runtime": true
     }
@@ -381,6 +381,11 @@
       "sha512": "9d70312a931f06d1158e7e913a23fb4aec4bb5fce6c5b55caf274a6d63905248625beaf1391f2d4518fbf5099523fdab2aa26834651856f4693fbf8862027889"
     },
     {
+      "path": "src/release/diffutils/diffutils-3.12-2-src.tar.xz",
+      "size": 1944556,
+      "sha512": "a3811e28596972138ba256fd31bc24e63c8120894d93bc1b7fc6885885df1a5165b5ac81db97d01fff01f6aed2a7c27ef78e535bef1c792f4068e82fcd06362d"
+    },
+    {
       "path": "src/release/gawk/gawk-5.4.0-1-src.tar.xz",
       "size": 4661040,
       "sha512": "5c23e610288d88531bb906bc6cd16db784d404778bc7ca10a1575f80f346593fd5091cf6f2c5220fe98ba952a11325bd53fa548eef26bb6637f5ac99f99dde4b"
@@ -411,14 +416,19 @@
       "sha512": "febb2198032521ccad5df4c1311c99cb9fc8fe11b7a67ec5199a80614a96969836f9989a48797644cb11cd7b54933ff4deaa7ed1246e171f99fe52111a51accb"
     },
     {
-      "path": "src/release/openssh/openssh-10.6p1-1-src.tar.xz",
-      "size": 1929108,
-      "sha512": "6785350c2dd86d42842d9c6e6cdb9c1fccf5e1014d61bf6f419997724dba94b91081fac35874554e1b949bbd53b5d74567cf2a5a2e7ede196e019f7a885eb18c"
+      "path": "src/release/openssh/openssh-10.6p2-1-src.tar.zst",
+      "size": 1926035,
+      "sha512": "08c4888c4a79e909dbb0d1ea96a29b477c1896ec8c49df74da72c6a5a5309870a1995bd84bcf1c67385ae2ce9f6a93d32c95703301d167863c85c7d33f2367c0"
     },
     {
       "path": "src/release/openssl/openssl-3.5.9-1-src.tar.zst",
       "size": 53203241,
       "sha512": "3c12d022311e2b02cd117740c535d512848421a5e6f806a35547bd7e8fb03976f6e92e6cae82fbfc80d90a6e34bcab6320db8808ba55b36fe63dbacea0f05663"
+    },
+    {
+      "path": "src/release/p11-kit/p11-kit-0.26.6-1-src.tar.xz",
+      "size": 1156080,
+      "sha512": "cf2f23a2bfbc1f4708944a7ac4a4a4b874d1a2f89f9abe35d61a15148216e446cb8228445126f5f0b277d65cced067894b08c4a6d0df9681a6497cba0ca01d46"
     },
     {
       "path": "src/release/pcre2/pcre2-10.49-1-src.tar.zst",
@@ -434,6 +444,16 @@
       "path": "src/release/tzdata/tzdata-2026f-1-src.tar.xz",
       "size": 490108,
       "sha512": "07f7434111722244a1d088b760f05346a276591339b7b10f9f2494da80afe2a5f0657a1cb8fc936c16c5ad5d06c75df54fcb7613f6e3f743d81a4cd0b5267488"
+    },
+    {
+      "path": "src/release/zlib/zlib-1.4-1-src.tar.zst",
+      "size": 1322042,
+      "sha512": "346253796d80bb47ab86d6c8ffd47fd139cf48dd2353e8a11d96e47fb655832475dc570d00fd95ed653fb9c738341c387cedb59a83530f71182e71d662b9b8f2"
+    },
+    {
+      "path": "src/release/zstd/zstd-1.6.0-1-src.tar.zst",
+      "size": 1983211,
+      "sha512": "a973704f3cd924714abe140dda0f3de1357922e996fab078b592846573dbbff946cb13a000c2936b2f556f14c4e9980965ded27e92bd07dbc5fc0434b114d028"
     },
     {
       "path": "x86_64/release/attr/libattr1/libattr1-2.5.2-2-x86_64.tar.xz",
@@ -486,14 +506,9 @@
       "sha512": "923b4b3215f4432a444d1e77170eaea4cbfb08b537942cc2df29f6137c7bc49543131fd09a6d49c874bf4b4dec06fb2b3f55b203df5842dbc81505181af4bf8a"
     },
     {
-      "path": "x86_64/release/diffutils/diffutils-3.12-1-src.tar.xz",
-      "size": 1943288,
-      "sha512": "0cb3dddc478d25e6d4ed041ce0f45858a6857e1efae3ef1cd46c9a95ea7dac66cce90036ae8e142660d4aaae5ec7f87c7350714d8b500038c379eb602e94137e"
-    },
-    {
-      "path": "x86_64/release/diffutils/diffutils-3.12-1-x86_64.tar.xz",
-      "size": 431400,
-      "sha512": "2a9d8fa0acd5a6108f74afe515f55a2a7cade6fa7f96368e46a6f33cf3b49d270b50dc3cee0320740c8f1729edcbf8dd3824f4b268261fba7aeed0d75a4e943c"
+      "path": "x86_64/release/diffutils/diffutils-3.12-2-x86_64.tar.xz",
+      "size": 434136,
+      "sha512": "68097cf116a14ad03509ca9e141e9a3c21e2cf2dcf9db494d483920b9a0fda0f5cf4bb58c3b37d153a430f42900b58870769dcf72fb9dc34fe5c1adde7f5f73d"
     },
     {
       "path": "x86_64/release/editrights/editrights-1.04-1-src.tar.xz",
@@ -531,14 +546,14 @@
       "sha512": "b860f3d01f32da7312a0ce118bdaa53e2418c53f0ac5cfd52b3e4267f353fa21ae27fd2649eb9c6bff48b3d10a0a9f7bcaa2d644f770f0f3916f5d969beedd65"
     },
     {
-      "path": "x86_64/release/gettext/gettext-0.22.5-1-src.tar.xz",
-      "size": 8483620,
-      "sha512": "101bf0971ec63c5a99fc1f78be0047417ce4bbbe6bee88596a27973cad07cbb7a89e466e3e996332ef9d99b3d38b3bede42e53ca544c5e3540f723ccb8621e04"
+      "path": "x86_64/release/gettext/gettext-0.26-1-src.tar.xz",
+      "size": 9549988,
+      "sha512": "cac03748f8d93146e6f2c29745bf3d676d32080f5995d8286c4e618becadc62c0cafdfc057fd8119ceb35dc8043b9a15dc44eaaf5bb0598bb5954959ae47f00e"
     },
     {
-      "path": "x86_64/release/gettext/libintl8/libintl8-0.22.5-1.tar.xz",
-      "size": 43256,
-      "sha512": "370a19af888bc7c9ed95cf8ade0d36d5e7cdb634abdebcba260cad61fa9a4cc05b5e748e315c9709f66861e8756b227d6757d529846591189e19ee2b2d00002d"
+      "path": "x86_64/release/gettext/libintl8/libintl8-0.26-1-x86_64.tar.xz",
+      "size": 60324,
+      "sha512": "7366bfe8a92c8992bc8d428143b3664d8b87f566060910efb4c4d37bba65026faeac4bcd93d67b6e0390b8d82bf787d9fec4bbbea488d10fd349f238e54ff9e2"
     },
     {
       "path": "x86_64/release/gmp/gmp-6.3.0-1-src.tar.zst",
@@ -636,24 +651,19 @@
       "sha512": "cc3836812d1133caaab81c17e79efffb47aa5172dce3d4644682ed73a2df2b0754d2e1e8df879479d0be148d4a329b4cd76e15dfaff6e7874fa8aabe298a8288"
     },
     {
-      "path": "x86_64/release/p11-kit/libp11-kit0/libp11-kit0-0.26.5-1-x86_64.tar.xz",
-      "size": 212700,
-      "sha512": "dd64f129fe71233e26e0845b6711db5cf2eb2e6d2d050f07b6aec0d9dd54d980e87390614744fbf022cf57aa2b3f7edbdc30c548c2f9d480188c22bcde0c2eba"
+      "path": "x86_64/release/p11-kit/libp11-kit0/libp11-kit0-0.26.6-1-x86_64.tar.xz",
+      "size": 386044,
+      "sha512": "4330ab3df8385566274b89f8d57c295dec699073d8946ce246fe766a6cd3e1060b718d4ccfe4e74094d85fb4d4d141041b546d04b18ea1a5ef75ead7caffaebc"
     },
     {
-      "path": "x86_64/release/p11-kit/p11-kit-0.26.5-1-src.tar.xz",
-      "size": 1088428,
-      "sha512": "3121e44601f87184352240bd7029a4f91ec5a732f51b4a88d87d676b34becc8f0606afabd43651ba3742b59aaba48e1a54ee713d43732bba03154ca8c0438a55"
+      "path": "x86_64/release/p11-kit/p11-kit-0.26.6-1-x86_64.tar.xz",
+      "size": 183744,
+      "sha512": "9d01ffd7bdcb5e0c2a67d3579705508b3c5313135fbc3e26bef6e67ffe4d2f11e900ac4f3a4d966396fbc26913a5b0a3f68ffb5b83698e30ddc1ed8a706ec28d"
     },
     {
-      "path": "x86_64/release/p11-kit/p11-kit-0.26.5-1-x86_64.tar.xz",
-      "size": 332724,
-      "sha512": "1f057de789a5553f04649c80e6f78385135b57de7ba078e9dd51f2db60afee37717bb6de9dcf0a330cf72fce1359e08c0186988632b5f858992ebf95739bb840"
-    },
-    {
-      "path": "x86_64/release/p11-kit/p11-kit-trust/p11-kit-trust-0.26.5-1-x86_64.tar.xz",
-      "size": 110096,
-      "sha512": "2f98ae11e42f69fa4626638f7cefe2ba2fed808ae618093c1e6c568f8a8be79e6690b40e39e20df02a8d363c371cca8b8320fea7b288e8561cd299f15cc5b796"
+      "path": "x86_64/release/p11-kit/p11-kit-trust/p11-kit-trust-0.26.6-1-x86_64.tar.xz",
+      "size": 110284,
+      "sha512": "f4a29767859bad5e52e078364a654df8207268fb87f8613d3ceb6fac4a5a02162435f000781dbae5dff1d324afe039a407d85c753b980d436373b8a09d45762d"
     },
     {
       "path": "x86_64/release/pcre2/libpcre2_8_0/libpcre2_8_0-10.49-1-x86_64.tar.zst",
@@ -741,29 +751,19 @@
       "sha512": "4f3473472e32bff586401ec31f1423237c9cb112ae1140cdd8b2797040c5c182632f49f5354eaaa409d2dacba7767d5baa8b8926d7638e2725ad80065b46c10b"
     },
     {
-      "path": "x86_64/release/zlib/zlib-1.3.2-1-src.tar.zst",
-      "size": 1321796,
-      "sha512": "10aa89718be99490ba9e76c19cf8e7e5cbb2a84c7510ea928c87c60279cb5ef0beb58def1049f427139e2b2024e4434ca32bdfbf7cd9a73ea7672684b2b3bcb9"
+      "path": "x86_64/release/zlib/zlib-devel/zlib-devel-1.4-1-x86_64.tar.zst",
+      "size": 189685,
+      "sha512": "2e78ad4bd448c41cab1b02813a6cd17e189654391d3872795edd197cea1383572e8e6eb7da8ce7f67a06333c8be43ba5fd1a03543bc293af76067c1020c11930"
     },
     {
-      "path": "x86_64/release/zlib/zlib-devel/zlib-devel-1.3.2-1-x86_64.tar.zst",
-      "size": 186596,
-      "sha512": "9408e801b93bf856907e146d30f112275e164140d532a6c11a8377fef76116cecf88623973ef8d72301a074881c30cf237d88373746539ae7bd258c71f078da4"
+      "path": "x86_64/release/zlib/zlib0/zlib0-1.4-1-x86_64.tar.zst",
+      "size": 46925,
+      "sha512": "2aa35b5560283f6ace3f53af7df5feab55de5f3bed4edbb4ee8da9d2a498ff9c031b3276a8267cc963fe717f5ee25c6440ec42103b6cc92f7ecc387f9f0bb63c"
     },
     {
-      "path": "x86_64/release/zlib/zlib0/zlib0-1.3.2-1-x86_64.tar.zst",
-      "size": 46254,
-      "sha512": "d79ba6098cadf6bf2f32f35d9cd54729293c64b3c9daabb9d080f52861a19db71544d5710fdbd61ff45e7c2ae4eecb3f2e3b8a1e3bc05695b8cfe01c7639c53a"
-    },
-    {
-      "path": "x86_64/release/zstd/libzstd1/libzstd1-1.5.7-1.tar.zst",
-      "size": 253786,
-      "sha512": "f89cdaa004487ec8c4796b8f56887c81f6f497873c1495b9cb585ffe6c8d6e6b8ad4b52617d5238075f965f1fe001da287d9a00d121590274b2d87672b415a0f"
-    },
-    {
-      "path": "x86_64/release/zstd/zstd-1.5.7-1-src.tar.zst",
-      "size": 1868357,
-      "sha512": "70e7e40283b8f7783b5545b249e4afc815fe1ac625786ad9e6e6ef50a733d0cf8b810ccea280786dd30f7b82af837f7fc09efe0f3cd0ca146d9c231648f3cc64"
+      "path": "x86_64/release/zstd/libzstd1/libzstd1-1.6.0-1-x86_64.tar.zst",
+      "size": 258475,
+      "sha512": "3a29498017396777ca93f0f595cf44f912bbd6f4bba733e4f78870fae0893cdc2d22fa5b97ab980182010781499e20a6d19fa2bb8e647ff91f7e182f4fb6e844"
     }
   ]
 }

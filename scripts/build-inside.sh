@@ -15,7 +15,7 @@ python3 scripts/inputs.py stage
 cp -a work/sysroot/. "$sysroot/"
 export CYGWIN_SYSROOT="$sysroot"
 export SOURCE_DATE_EPOCH=1791244800
-tar --no-same-owner -xf work/source-package/openssh-10.6p1-1.src/openssh-portable-10.6p1.tar.bz2 -C work
+tar --no-same-owner -xf work/source-package/openssh-10.6p2-1.src/openssh-portable-10.6p2.tar.bz2 -C work
 patch -d work/openssh-portable -p1 < patches/cygwin-cross-textreadmode.patch
 
 mkdir -p work/obj work/package

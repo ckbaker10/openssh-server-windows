@@ -1,6 +1,6 @@
 # OpenSSH Server for Windows
 
-A standalone **OpenSSH 10.6p1 package for Windows x86_64**, including the
+A standalone **OpenSSH 10.6p2 package for Windows x86_64**, including the
 Cygwin runtime, Bash, SCP and SFTP. It provides remote access and file transfers
 using SSH keys, including support for restricted Windows accounts.
 

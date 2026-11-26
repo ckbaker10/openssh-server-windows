@@ -10,7 +10,7 @@ as LocalSystem; logins use the permissions of the respective Windows account.
 Download the ZIP and SHA256SUMS from the same release. Compare the hash:
 
 ```powershell
-Get-FileHash .\openssh-10.6p1-cygwin-x86_64.zip -Algorithm SHA256
+Get-FileHash .\openssh-10.6p2-cygwin-x86_64.zip -Algorithm SHA256
 ```
 
 The ZIP contains a single top-level `OpenSSH-Cygwin` directory. Extract into

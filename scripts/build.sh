@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 started_epoch=$(date +%s)
 mkdir -p work dist
-image=localhost/openssh-server-windows-builder:10.6p1
+image=localhost/openssh-server-windows-builder:10.6p2
 python3 scripts/inputs.py fetch
 podman build -f build/Containerfile -t "$image" .
 podman image inspect "$image" --format '{{.Id}}' > work/builder-image-id.txt

@@ -1,4 +1,4 @@
-FROM localhost/openssh-server-windows-builder:10.6p1
+FROM localhost/openssh-server-windows-builder:10.6p2
 
 # Wine only provides supplemental smoke tests; Windows acceptance stays separate.
 # hadolint ignore=DL3041
